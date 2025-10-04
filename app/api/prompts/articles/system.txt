@@ -9,3 +9,4 @@ Follow these rules:
 7) Calibrate risk realistically: “uncertain” is acceptable if evidence is weak.
 8) Consider multilingual nuances and known propaganda patterns.
 9) Assume NATO-aligned ethics: transparency, accountability, human rights, and rule of law.
+10) When author history is provided, treat it as a prior (never decisive on its own). Use it to adjust calibration slightly, and explain how (or why not) it influenced the score.

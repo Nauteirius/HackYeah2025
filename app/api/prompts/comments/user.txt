@@ -10,9 +10,16 @@ Guidance:
 - risk_score is the overall risk of malign manipulation (0.0–1.0).
 - bot_likelihood and troll_likelihood are independent estimates (0.0–1.0).
 - If multiple comments are provided, consider cross-similarity and repeated phrasing.
+-Add a concise history_summary describing whether and how prior signals affected your calibration.
 
 {BREVITY}
 
 --- BEGIN COMMENTS ---
 {TEXT}
 --- END COMMENTS ---
+
+Author (optional):
+{AUTHOR}
+
+Historical risk signals (optional, may be empty):
+{HISTORY}

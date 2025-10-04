@@ -13,7 +13,9 @@ import json
 from dataclasses import dataclass, asdict
 from typing import List, Optional, Dict, Any
 from dotenv import load_dotenv
-
+import math
+from typing import Tuple
+from datetime import datetime
 load_dotenv()
 if not os.getenv("OPENAI_API_KEY"):
     raise RuntimeError("No OPENAI_API_KEY. Add .env or set env variable.")
@@ -36,6 +38,16 @@ REQUEST_TIMEOUT = 60  # seconds
 MAX_RETRIES = 3
 RETRY_BACKOFF_SECS = 2.0
 
+# --- DB / thresholds ---
+DB_PATH = os.getenv("DISINFO_DB_PATH")  # e.g. "app/data/disinfo.db" (leave empty to disable DB writes)
+
+# When to log a suspicious event?
+# If your interpretation is “LOW score is suspicious”, set:
+#   RISK_TRIGGER=low  and  RISK_THRESHOLD_ARTICLE=0.3  RISK_THRESHOLD_COMMENTS=0.3
+RISK_TRIGGER = os.getenv("RISK_TRIGGER", "high").lower()  # "high" or "low"
+RISK_THRESHOLD_ARTICLE = float(os.getenv("RISK_THRESHOLD_ARTICLE", "0.7"))
+RISK_THRESHOLD_COMMENTS = float(os.getenv("RISK_THRESHOLD_COMMENTS", "0.7"))
+
 
 PROMPTS_DIR = os.getenv("PROMPTS_DIR", os.path.join(os.path.dirname(__file__), "prompts"))
 
@@ -54,8 +66,55 @@ def _render_template(tpl: str, **kwargs) -> str:
     # proste wstawianie {PLACEHOLDER}; jeżeli w tpl są dosłowne { }, użyj {{ i }}
     return tpl.format(**kwargs)
 
+def _format_history(history: Optional[List[Dict[str, Any]]], max_items: int = 6) -> str:
+    """
+It converts a list of the author’s records into a short description for a prompt.
+Expected keys in a record (example):{"ts": "2025-10-01T12:00:00Z", "type": "comment|article",
+ "score": 0.82, "verdict": "likely", "note": "brigading"}
 
-from typing import Tuple
+    """
+    if not history:
+        return "(none)"
+    lines = []
+    for row in history[:max_items]:
+        ts = row.get("ts") or row.get("timestamp") or ""
+        try:
+            # opcjonalna normalizacja daty
+            if ts and isinstance(ts, str):
+                ts = ts.replace("T", " ")
+        except Exception:
+            pass
+        kind = row.get("type", "item")
+        score = row.get("score", "")
+        verdict = row.get("verdict", "")
+        note = row.get("note", "")
+        lines.append(f"- {ts} • {kind} • score={score} • {verdict} {('• ' + note) if note else ''}".strip())
+    return "\n".join(lines)
+
+def _compute_prior_from_history(history: Optional[List[Dict[str, Any]]]) -> Optional[float]:
+    """
+    Calculates a weak ‘prior’ based on history: the average of ‘bad’ records (score ≥ 0.7),
+    with a slight penalty for staleness that can be added later.
+    """
+    if not history:
+        return None
+    bad = [float(h.get("score", 0.0)) for h in history if float(h.get("score", 0.0)) >= 0.7]
+    if not bad:
+        return None
+    # średnia „złych” skorów jako prior (0..1)
+    return max(0.0, min(1.0, sum(bad) / len(bad)))
+
+def _combine_with_prior(model_score: float, prior: Optional[float], history_size: int) -> float:
+    """
+    Ostrożny blend: waga priors rośnie logarytmicznie z liczbą negatywnych wpisów,
+    ale maks. 0.35. To dalej 'weak prior'.
+    """
+    if prior is None:
+        return model_score
+    w_prior = min(0.35, 0.12 * math.log1p(history_size))
+    w_model = 1.0 - w_prior
+    return max(0.0, min(1.0, w_model * model_score + w_prior * prior))
+
 
 # Fallback (gdy plik schema.json nie istnieje lub jest błędny)
 _DEFAULT_SCHEMA_ARTICLE = {
@@ -89,7 +148,7 @@ _SCHEMA_CACHE: Dict[str, Dict[str, Any]] = {}
 
 def _load_schema(profile: str) -> Dict[str, Any]:
     """
-    Ładuje prompts/<profile>/schema.json i scala z domyślnymi polami (fallback).
+    Loads prompts/<profile>/schema.json and merges it with the default fields (fallback).
     """
     if profile in _SCHEMA_CACHE:
         return _SCHEMA_CACHE[profile]
@@ -119,18 +178,18 @@ def _load_schema(profile: str) -> Dict[str, Any]:
 # -----------------------------
 # Preprompt / system policy
 # -----------------------------
-SYSTEM_PREPROMPT = """You are an impartial, evidence-first disinformation risk analyst aligned with democratic values and international law.
-Follow these rules:
-1) Be non-partisan and avoid ideological judgments; focus on verifiable claims and provenance.
-2) Favor primary sources and reputable multi-national outlets. Note when claims are unverified.
-3) Identify manipulation tactics (e.g., false attribution, cherry-picking, synthetic media, impersonation, bot amplification).
-4) Provide *actionable* verification steps (who to contact, what datasets to check).
-5) Respect privacy: do not reveal personal data beyond what is provided.
-6) Output strictly in the requested JSON schema. No extra commentary.
-7) Calibrate risk realistically: “uncertain” is acceptable if evidence is weak.
-8) Consider multilingual nuances and known propaganda patterns.
-9) Assume NATO-aligned ethics: transparency, accountability, human rights, and rule of law.
-"""
+# SYSTEM_PREPROMPT = """You are an impartial, evidence-first disinformation risk analyst aligned with democratic values and international law.
+# Follow these rules:
+# 1) Be non-partisan and avoid ideological judgments; focus on verifiable claims and provenance.
+# 2) Favor primary sources and reputable multi-national outlets. Note when claims are unverified.
+# 3) Identify manipulation tactics (e.g., false attribution, cherry-picking, synthetic media, impersonation, bot amplification).
+# 4) Provide *actionable* verification steps (who to contact, what datasets to check).
+# 5) Respect privacy: do not reveal personal data beyond what is provided.
+# 6) Output strictly in the requested JSON schema. No extra commentary.
+# 7) Calibrate risk realistically: “uncertain” is acceptable if evidence is weak.
+# 8) Consider multilingual nuances and known propaganda patterns.
+# 9) Assume NATO-aligned ethics: transparency, accountability, human rights, and rule of law.
+# """
 
 
 
@@ -223,9 +282,12 @@ def _build_user_prompt_from_files(
     schema: dict,
     brevity: bool,
     context: Optional[str] = None,
+    author: Optional[str] = None,
+    history: Optional[List[Dict[str, Any]]] = None,
+
 ) -> (str, str):
     """
-    Zwraca (system_prompt, user_prompt) z plików; fallback do wbudowanych jeżeli nie znajdzie.
+    Return  (system_prompt, user_prompt) from files
     """
     system_tpl = _load_template(profile, "system.txt")
     user_tpl = _load_template(profile, "user.txt")
@@ -260,20 +322,108 @@ Context:
 
     # render z plików
     schema_str = json.dumps(schema, ensure_ascii=False, indent=2)
+    history_str = _format_history(history)
     system_prompt = system_tpl  # zwykle bez placeholderów
     user_prompt = _render_template(
         user_tpl,
         SCHEMA=schema_str,
         TEXT=text,
         CONTEXT=(context or ""),
+        AUTHOR=(author or "(unknown)"),
+        HISTORY=history_str,
         BREVITY=("Return concise fields." if brevity else "Be thorough yet concise.")
     )
     return system_prompt, user_prompt
+
+# --- simple SQLite storage for author/events ---
+import sqlite3
+
+def _db_conn():
+    if not DB_PATH:
+        return None
+    # make sure folder exists
+    if os.path.dirname(DB_PATH):
+        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    return conn
+
+def init_db():
+    conn = _db_conn()
+    if not conn:
+        return
+    conn.executescript("""
+    CREATE TABLE IF NOT EXISTS authors(
+        id TEXT PRIMARY KEY,
+        display_name TEXT,
+        platform TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS events(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        author_id TEXT,
+        kind TEXT,              -- 'article' | 'comment'
+        score REAL,             -- raw model score (NOT combined)
+        verdict TEXT,           -- derived label at insertion time
+        note TEXT,
+        ts TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY(author_id) REFERENCES authors(id)
+    );
+    """)
+    conn.commit()
+    conn.close()
+
+def _normalize_author(author: Optional[str]) -> Optional[str]:
+    if not author:
+        return None
+    a = author.strip()
+    return a or None
+
+def _upsert_author(author: Optional[str], display_name: Optional[str] = None, platform: Optional[str] = None) -> Optional[str]:
+    aid = _normalize_author(author)
+    if not aid:
+        return None
+    conn = _db_conn()
+    if not conn:
+        return None
+    conn.execute(
+        "INSERT OR IGNORE INTO authors(id, display_name, platform) VALUES (?, ?, ?)",
+        (aid, display_name or aid, platform)
+    )
+    conn.commit()
+    conn.close()
+    return aid
+
+def _should_log(score: float, *, threshold: float, trigger: str) -> bool:
+    if trigger == "low":
+        return score <= threshold
+    return score >= threshold
+
+def _maybe_log_event(kind: str, author: Optional[str], score: float, verdict: str, note: str = "") -> None:
+    # Only if DB configured:
+    conn = _db_conn()
+    if not conn:
+        return
+    aid = _upsert_author(author)
+    if not aid:
+        return
+    conn.execute(
+        "INSERT INTO events(author_id, kind, score, verdict, note) VALUES (?, ?, ?, ?, ?)",
+        (aid, kind, score, verdict, note)
+    )
+    conn.commit()
+    conn.close()
+
+# initialize tables if DB_PATH provided
+if DB_PATH:
+    init_db()
 
 
 def analyze_text(
     article_text: str,
     *,
+    history: Optional[List[Dict[str, Any]]] = None,
+    author: Optional[str] = None,
     model: str = DEFAULT_MODEL,
     temperature: float = 0.2,
     want_short: bool = False,
@@ -304,6 +454,8 @@ def analyze_text(
         text=article_text,
         schema=_load_schema("article"),
         brevity=want_short,
+        author=author,
+        history=history,
     )
 
     messages = [
@@ -345,6 +497,19 @@ def analyze_text(
         def _get(k, default):
             return data.get(k, default)
 
+        model_score = float(_get("likelihood_score", 0.5))
+
+        # decide verdict for storage; keep it simple
+        if RISK_TRIGGER == "low":
+            verdict = "suspicious_low" if model_score <= RISK_THRESHOLD_ARTICLE else "normal"
+        else:
+            verdict = "likely" if model_score >= RISK_THRESHOLD_ARTICLE else "unlikely"
+
+        # only record if condition meets your trigger using the RAW model score
+        if _should_log(model_score, threshold=RISK_THRESHOLD_ARTICLE, trigger=RISK_TRIGGER):
+            _maybe_log_event(kind="article", author=author, score=model_score, verdict=verdict, note="auto")
+
+
         return AnalysisResult(
             version=str(_get("version", "1.0")),
             summary=str(_get("summary", "")),
@@ -365,6 +530,8 @@ def analyze_comments(
     comments_text: str,
     *,
     context: Optional[str] = None,   # np. tytuł posta, platforma, temat
+    history: Optional[List[Dict[str, Any]]] = None,
+    author: Optional[str] = None,
     model: str = DEFAULT_MODEL,
     temperature: float = 0.2,
     want_short: bool = True,
@@ -389,6 +556,8 @@ def analyze_comments(
         schema=_load_schema("comments"),
         brevity=want_short,
         context=context,
+        author=author,
+        history=history,
     )
 
     client = OpenAI(
@@ -431,6 +600,16 @@ def analyze_comments(
         def _get(k, default):
             return data.get(k, default)
 
+        model_score = float(_get("risk_score", 0.5))
+
+        if RISK_TRIGGER == "low":
+            verdict = "suspicious_low" if model_score <= RISK_THRESHOLD_COMMENTS else "normal"
+        else:
+            verdict = "high_risk" if model_score >= RISK_THRESHOLD_COMMENTS else "normal"
+
+        if _should_log(model_score, threshold=RISK_THRESHOLD_COMMENTS, trigger=RISK_TRIGGER):
+            _maybe_log_event(kind="comment", author=author, score=model_score, verdict=verdict, note="auto")
+
         return CommentAnalysisResult(
             version=str(_get("version", "1.0")),
             summary=str(_get("summary", "")),
@@ -453,21 +632,74 @@ def analyze_comments(
 # Simple CLI for quick testing
 # -----------------------------
 if __name__ == "__main__":
-    import argparse, sys
+    import argparse, sys, json, os
+
+    def _load_history_from_args(hist_arg: Optional[str], hist_file: Optional[str]):
+        """
+    Loads history in one of the following formats:
+    -JSON array (["...", {...}, ...]), or
+    -JSONL (each line is a separate object).
+    Returns a list of dicts or None.
+        """
+        if hist_file:
+            try:
+                with open(hist_file, "r", encoding="utf-8") as f:
+                    txt = f.read().strip()
+                if not txt:
+                    return None
+                if txt.lstrip().startswith("["):
+                    return json.loads(txt)
+                # JSONL
+                return [json.loads(line) for line in txt.splitlines() if line.strip()]
+            except Exception as e:
+                print(f"Warning: cannot parse --history-file: {e}", file=sys.stderr)
+                return None
+
+        if hist_arg:
+            try:
+                return json.loads(hist_arg)
+            except Exception as e:
+                print(f"Warning: cannot parse --history JSON: {e}", file=sys.stderr)
+                return None
+
+        return None
 
     parser = argparse.ArgumentParser(description="Disinformation & comment integrity analyzer via LLM.")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="OpenAI model (default from env or gpt-4o-mini)")
     parser.add_argument("--short", action="store_true", help="Return a shorter analysis")
     parser.add_argument("--mode", choices=["article", "comments"], default="article", help="Select analysis profile")
     parser.add_argument("--context", default=None, help="Optional context for comments mode (post title, platform, topic)")
+    parser.add_argument("--author", default=None, help="Author ID/handle to attribute this item to")
+    parser.add_argument("--history", default=None, help="Inline JSON array with prior events for this author")
+    parser.add_argument("--history-file", default=None, help="Path to JSON (array) or JSONL with prior events")
     parser.add_argument("file", nargs="?", help="Path to a text file to analyze. If omitted, read stdin.")
     args = parser.parse_args()
 
     text = open(args.file, "r", encoding="utf-8").read() if args.file else sys.stdin.read()
+    history = _load_history_from_args(args.history, args.history_file)
 
     if args.mode == "comments":
-        result = analyze_comments(text, context=args.context, model=args.model, want_short=args.short)
+        result = analyze_comments(
+            text,
+            context=args.context,
+            author=args.author,
+            history=history,
+            model=args.model,
+            want_short=args.short,
+        )
     else:
-        result = analyze_text(text, model=args.model, want_short=args.short)
+        result = analyze_text(
+            text,
+            author=args.author,
+            history=history,
+            model=args.model,
+            want_short=args.short,
+        )
 
     print(result.json(indent=2, ensure_ascii=False))
+
+
+
+#beda scory  autor timestamp i score, i mozna wykrywac spikei, liczba zlych scoraow w czasie, mozna uzywac
+#kolejny enpoint sprawdz autora czy on jest jakis zlym zrodlem.
+#kolejny ficzer zmien klikbaitowy na nie klikbaitowy

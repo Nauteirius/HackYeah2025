@@ -1,5 +1,6 @@
 Analyze the following text for disinformation risk and produce ONLY the JSON object conforming to the schema below.
 Do not include markdown fences or commentary.
+Add a concise history_summary describing whether and how prior signals affected your calibration.
 
 Schema (example, types only; fill with your assessment):
 {SCHEMA}
@@ -16,3 +17,9 @@ Scoring guidance:
 --- BEGIN ARTICLE ---
 {TEXT}
 --- END ARTICLE ---
+
+Author (optional):
+{AUTHOR}
+
+Historical risk signals (optional, may be empty):
+{HISTORY}
