@@ -31,45 +31,53 @@ const MetricsList = ({ data, isModal }: Props) => {
         className={`${isModal ? "grid grid-cols-1 md:grid-cols-2 gap-6" : "flex flex-col items-center"} w-full max-w-full mx-auto py-4`}
       >
         {data.summary && (
-          <div className={`${isModal ? "col-span-2" : "w-full pb-4"}`}>
+          <div className={`${isModal ? "col-span-2" : "w-full pb-3"}`}>
             <SummaryReport value={data.summary} />
             {!isModal && <Divider className="mt-6" />}
           </div>
         )}
 
-        <div
-          className={`${isModal ? "" : "flex flex-wrap gap-4 justify-center w-full pb-4"}`}
-        >
-          {data.likelihood_score !== undefined && (
-            <LikelihoodScoreReport value={data.likelihood_score * 100} />
-          )}
-          {!isModal && <Divider className="mt-6" />}
-        </div>
+        {isModal && (
+          <div
+            className={`${isModal ? "" : "flex flex-wrap gap-4 justify-center w-full pb-3"}`}
+          >
+            {data.likelihood_score !== undefined && (
+              <LikelihoodScoreReport value={data.likelihood_score * 100} />
+            )}
+            {!isModal && <Divider className="mt-6" />}
+          </div>
+        )}
 
-        <div
-          className={`${isModal ? "" : "flex flex-wrap gap-4 justify-center w-full pb-4"}`}
-        >
-          {data.confidence !== undefined && (
-            <ConfidenceReport value={data.confidence} />
-          )}
-          {!isModal && <Divider className="mt-6" />}
-        </div>
+        {isModal && (
+          <div
+            className={`${isModal ? "" : "flex flex-wrap gap-4 justify-center w-full pb-3"}`}
+          >
+            {data.confidence !== undefined && (
+              <ConfidenceReport value={data.confidence} />
+            )}
+            {!isModal && <Divider className="mt-6" />}
+          </div>
+        )}
 
-        {data.rationale && (
-          <div className={`${isModal ? "col-span-2  px-1" : "w-full px-1 pb-4"}`}>
+        {data.rationale && isModal && (
+          <div
+            className={`${isModal ? "col-span-2  px-1" : "w-full px-1 pb-3"}`}
+          >
             <RationaleReport value={data.rationale} />
             {!isModal && <Divider className="mt-6" />}
           </div>
         )}
 
-        {data.key_claims && (
-          <div className={`${isModal ? "col-span-2  px-1" : "w-full px-1 pb-4"}`}>
+        {data.key_claims && isModal && (
+          <div
+            className={`${isModal ? "col-span-2  px-1" : "w-full px-1 pb-3"}`}
+          >
             <KeyClaimsReport values={data.key_claims} />
             {!isModal && <Divider className="mt-6" />}
           </div>
         )}
 
-        {data.detected_tactics && (
+        {data.detected_tactics && isModal && (
           <div className={`${isModal ? "" : "w-full text-center mb-4"}`}>
             <h3 className="font-medium text-lg mb-2">Detected Tactics</h3>
             <DetectedTacticsReport values={data.detected_tactics} />
@@ -77,36 +85,41 @@ const MetricsList = ({ data, isModal }: Props) => {
           </div>
         )}
 
-        {data.risk_factors && (
-          <div className={`${isModal ? " px-1" : "w-full px-1 pb-4"}`}>
+        {data.risk_factors && isModal && (
+          <div className={`${isModal ? " px-1" : "w-full px-1 pb-3"}`}>
             <RiskFactorsReport values={data.risk_factors} />
             {!isModal && <Divider className="mt-6" />}
           </div>
         )}
 
         {data.recommended_checks && (
-          <div className={`${isModal ? "col-span-2 px-1" : "w-full px-1 pb-4"}`}>
+          <div
+            className={`${isModal ? "col-span-2 px-1" : "w-full px-1 pb-3"}`}
+          >
             <RecommendedChecksReport values={data.recommended_checks} />
-            {!isModal && <Divider className="mt-6" />}
           </div>
         )}
 
-        {data.safety_notes && (
-          <div className={`${isModal ? "col-span-2 px-1" : "w-full px-1 pb-4"}`}>
+        {data.safety_notes && isModal && (
+          <div
+            className={`${isModal ? "col-span-2 px-1" : "w-full px-1 pb-3"}`}
+          >
             <SafetyNotesReport values={data.safety_notes} />
             {!isModal && <Divider className="mt-6" />}
           </div>
         )}
 
-        {data.raw_text && (
+        {data.raw_text && isModal && (
           <div className={`${isModal ? "col-span-2" : "w-full px-1"}`}>
             <RawTextReport value={data.raw_text} />
             {!isModal && <Divider className="mt-4" />}
           </div>
         )}
 
-        {data.version && (
-          <div className={`${isModal ? "col-span-2 text-center" : "w-full flex justify-center"}`}>
+        {data.version && isModal && (
+          <div
+            className={`${isModal ? "col-span-2 text-center" : "w-full flex justify-center"}`}
+          >
             <VersionReport value={data.version} />
           </div>
         )}

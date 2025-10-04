@@ -65,12 +65,13 @@ const moreArticles = [
 ];
 
 // --- KOMPONENTY ---
-
+//@ts-ignore
 const getRatingColor = (rating) => {
   const hue = (rating / 10) * 120;
   return { backgroundColor: `hsl(${hue}, 90%, 35%)` };
 };
 
+//@ts-ignore
 const RatingBadge = ({ rating, onClick, className = '' }) => (
   <div
     className={`absolute top-2 right-2 text-white text-sm font-bold px-2 py-1 flex items-center justify-center rounded-md cursor-pointer ${className}`}

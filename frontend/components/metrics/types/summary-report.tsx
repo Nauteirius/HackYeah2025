@@ -7,7 +7,7 @@ type Props = {
 const SummaryReport = ({ value }: Props) => {
   return (
     <>
-      <p>Summary</p>
+      <p className="text-lg font-medium mb-2">Summary</p>
       <p>{value as string}</p>
     </>
   );

@@ -21,12 +21,15 @@ import { useMemo, useState } from "react";
 import { IoSend } from "react-icons/io5";
 import { FaExpand } from "react-icons/fa6";
 import MetricsList from "@/components/metrics/metrics-list";
+import { useSearchParams } from "next/navigation";
 
 //TODO: throttling
 export default function Home() {
   const [apiData, setApiData] = useState<ArticleAnalysis | null>(null);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const [userInput, setUserInput] = useState("");
+  const searchParams = useSearchParams();
+  const query = searchParams.get("q");
+  const [userInput, setUserInput] = useState(query);
 
   return (
     <section className="flex flex-row h-full w-full gap-4 p-5">
