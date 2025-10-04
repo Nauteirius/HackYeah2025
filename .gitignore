@@ -1,2 +1,4 @@
 .env
 .myenv
+.ruff_cache
+__pycache__
