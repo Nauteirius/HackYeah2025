@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Go to Domain with Selected Text",
+  "version": "1.0",
+  "description": "Opens domain.com with selected text as query from right-click menu",
+  "permissions": ["contextMenus", "tabs"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "128": "icons/icon.png"
+  }
+}
