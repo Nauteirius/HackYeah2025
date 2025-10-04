@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "summary": "",
+  "risk_score": 0.0,
+  "confidence": 0.0,
+  "rationale": "",
+  "indicators": [],
+  "bot_likelihood": 0.0,
+  "troll_likelihood": 0.0,
+  "coordination_signals": [],
+  "language_markers": [],
+  "recommended_actions": [],
+  "safety_notes": []
+}

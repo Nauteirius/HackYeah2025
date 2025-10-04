@@ -54,6 +54,68 @@ def _render_template(tpl: str, **kwargs) -> str:
     # proste wstawianie {PLACEHOLDER}; jeżeli w tpl są dosłowne { }, użyj {{ i }}
     return tpl.format(**kwargs)
 
+
+from typing import Tuple
+
+# Fallback (gdy plik schema.json nie istnieje lub jest błędny)
+_DEFAULT_SCHEMA_ARTICLE = {
+    "version": "1.0",
+    "summary": "",
+    "likelihood_score": 0.0,
+    "confidence": 0.0,
+    "rationale": "",
+    "key_claims": [{"claim": "", "verdict": "supported|disputed|unverifiable", "evidence": [""]}],
+    "detected_tactics": [],
+    "risk_factors": [],
+    "recommended_checks": ["Cross-check with wire services (AP, Reuters, AFP) and NATO/UN press rooms"],
+    "safety_notes": []
+}
+_DEFAULT_SCHEMA_COMMENTS = {
+    "version": "1.0",
+    "summary": "",
+    "risk_score": 0.0,
+    "confidence": 0.0,
+    "rationale": "",
+    "indicators": [],
+    "bot_likelihood": 0.0,
+    "troll_likelihood": 0.0,
+    "coordination_signals": [],
+    "language_markers": [],
+    "recommended_actions": [],
+    "safety_notes": []
+}
+
+_SCHEMA_CACHE: Dict[str, Dict[str, Any]] = {}
+
+def _load_schema(profile: str) -> Dict[str, Any]:
+    """
+    Ładuje prompts/<profile>/schema.json i scala z domyślnymi polami (fallback).
+    """
+    if profile in _SCHEMA_CACHE:
+        return _SCHEMA_CACHE[profile]
+
+    schema_path = os.path.join(PROMPTS_DIR, profile, "schema.json")
+    default = _DEFAULT_SCHEMA_ARTICLE if profile == "article" else _DEFAULT_SCHEMA_COMMENTS
+
+    try:
+        raw = _read_file(schema_path)
+        if not raw:
+            _SCHEMA_CACHE[profile] = default
+            return default
+        parsed = json.loads(raw)
+        if not isinstance(parsed, dict):
+            _SCHEMA_CACHE[profile] = default
+            return default
+        # proste „merge” z domyślnymi polami (braki uzupełniamy):
+        merged = {**default, **parsed}
+        _SCHEMA_CACHE[profile] = merged
+        return merged
+    except Exception:
+        _SCHEMA_CACHE[profile] = default
+        return default
+
+
+
 # -----------------------------
 # Preprompt / system policy
 # -----------------------------
@@ -70,38 +132,7 @@ Follow these rules:
 9) Assume NATO-aligned ethics: transparency, accountability, human rights, and rule of law.
 """
 
-# The model will fill this JSON structure. Keep field names stable for downstream use.
-JSON_SCHEMA_EXAMPLE = {
-    "version": "1.0",
-    "summary": "",
-    "likelihood_score": 0.0,         # 0.0 (very unlikely) .. 1.0 (very likely disinformation)
-    "confidence": 0.0,               # model's calibration in its own assessment, 0..1
-    "rationale": "",
-    "key_claims": [
-        {"claim": "", "verdict": "supported|disputed|unverifiable", "evidence": [""]},
-    ],
-    "detected_tactics": [],          # e.g., ["whataboutism","fabricated quote","synthetic image","coordinated amplification"]
-    "risk_factors": [],              # short bullet points (source opacity, new domain, etc.)
-    "recommended_checks": [          # concrete next steps w/ sources or methods
-        "Cross-check with wire services (AP, Reuters, AFP) and NATO/UN press rooms",
-    ],
-    "safety_notes": []               # any ethical/privacy caveats the user should know
-}
 
-JSON_SCHEMA_COMMENTS = {
-    "version": "1.0",
-    "summary": "",
-    "risk_score": 0.0,            # 0..1 overall risk of malign manipulation
-    "confidence": 0.0,            # model self-confidence 0..1
-    "rationale": "",
-    "indicators": [],             # e.g., ["copy-paste slogan","astroturfing","brigading"]
-    "bot_likelihood": 0.0,        # 0..1
-    "troll_likelihood": 0.0,      # 0..1
-    "coordination_signals": [],   # e.g., ["time-clustered posts","reused phrasing across users"]
-    "language_markers": [],       # e.g., ["ALL CAPS","slurs","threats"]
-    "recommended_actions": [],    # moderation or countermeasures
-    "safety_notes": []
-}
 
 @dataclass
 class CommentAnalysisResult:
@@ -271,7 +302,7 @@ def analyze_text(
     system_prompt, user_prompt = _build_user_prompt_from_files(
         profile="article",
         text=article_text,
-        schema=JSON_SCHEMA_EXAMPLE,
+        schema=_load_schema("article"),
         brevity=want_short,
     )
 
@@ -355,7 +386,7 @@ def analyze_comments(
     system_prompt, user_prompt = _build_user_prompt_from_files(
         profile="comments",
         text=comments_text,
-        schema=JSON_SCHEMA_COMMENTS,
+        schema=_load_schema("comments"),
         brevity=want_short,
         context=context,
     )

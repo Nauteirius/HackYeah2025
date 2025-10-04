@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "summary": "",
+  "likelihood_score": 0.0,
+  "confidence": 0.0,
+  "rationale": "",
+  "key_claims": [
+    { "claim": "", "verdict": "supported|disputed|unverifiable", "evidence": [""] }
+  ],
+  "detected_tactics": [],
+  "risk_factors": [],
+  "recommended_checks": [
+    "Cross-check with wire services (AP, Reuters, AFP) and NATO/UN press rooms"
+  ],
+  "safety_notes": []
+}
