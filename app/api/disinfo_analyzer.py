@@ -36,6 +36,24 @@ REQUEST_TIMEOUT = 60  # seconds
 MAX_RETRIES = 3
 RETRY_BACKOFF_SECS = 2.0
 
+
+PROMPTS_DIR = os.getenv("PROMPTS_DIR", os.path.join(os.path.dirname(__file__), "prompts"))
+
+def _read_file(path: str) -> Optional[str]:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception:
+        return None
+
+def _load_template(profile: str, name: str) -> Optional[str]:
+    path = os.path.join(PROMPTS_DIR, profile, name)
+    return _read_file(path)
+
+def _render_template(tpl: str, **kwargs) -> str:
+    # proste wstawianie {PLACEHOLDER}; jeżeli w tpl są dosłowne { }, użyj {{ i }}
+    return tpl.format(**kwargs)
+
 # -----------------------------
 # Preprompt / system policy
 # -----------------------------
@@ -69,6 +87,40 @@ JSON_SCHEMA_EXAMPLE = {
     ],
     "safety_notes": []               # any ethical/privacy caveats the user should know
 }
+
+JSON_SCHEMA_COMMENTS = {
+    "version": "1.0",
+    "summary": "",
+    "risk_score": 0.0,            # 0..1 overall risk of malign manipulation
+    "confidence": 0.0,            # model self-confidence 0..1
+    "rationale": "",
+    "indicators": [],             # e.g., ["copy-paste slogan","astroturfing","brigading"]
+    "bot_likelihood": 0.0,        # 0..1
+    "troll_likelihood": 0.0,      # 0..1
+    "coordination_signals": [],   # e.g., ["time-clustered posts","reused phrasing across users"]
+    "language_markers": [],       # e.g., ["ALL CAPS","slurs","threats"]
+    "recommended_actions": [],    # moderation or countermeasures
+    "safety_notes": []
+}
+
+@dataclass
+class CommentAnalysisResult:
+    version: str
+    summary: str
+    risk_score: float
+    confidence: float
+    rationale: str
+    indicators: List[str]
+    bot_likelihood: float
+    troll_likelihood: float
+    coordination_signals: List[str]
+    language_markers: List[str]
+    recommended_actions: List[str]
+    safety_notes: List[str]
+    raw_text: Optional[str] = None
+
+    def json(self, **kwargs) -> str:
+        return json.dumps(asdict(self), **kwargs)
 
 
 @dataclass
@@ -132,6 +184,62 @@ Schema (example, types only; fill with your assessment):
 """
 
 
+
+def _build_user_prompt_from_files(
+    profile: str,
+    text: str,
+    *,
+    schema: dict,
+    brevity: bool,
+    context: Optional[str] = None,
+) -> (str, str):
+    """
+    Zwraca (system_prompt, user_prompt) z plików; fallback do wbudowanych jeżeli nie znajdzie.
+    """
+    system_tpl = _load_template(profile, "system.txt")
+    user_tpl = _load_template(profile, "user.txt")
+
+    if system_tpl is None or user_tpl is None:
+        # Fallback: użyj dotychczasowych promptów
+        if profile == "article":
+            system_prompt = SYSTEM_PREPROMPT
+            user_prompt = _build_user_prompt(text, want_short=brevity)
+        else:
+            # Minimalny fallback dla comments
+            system_prompt = (
+                "You assess user comments for coordinated manipulation, bot/troll signals, "
+                "respecting free expression and focusing on behavioral indicators."
+            )
+            schema_str = json.dumps(schema, ensure_ascii=False, indent=2)
+            user_prompt = f"""Return ONLY the JSON object per schema:
+
+Schema:
+{schema_str}
+
+Context:
+{context or ""}
+
+{ "Return concise fields." if brevity else "Be thorough yet concise." }
+
+--- BEGIN COMMENTS ---
+{text}
+--- END COMMENTS ---
+"""
+        return system_prompt, user_prompt
+
+    # render z plików
+    schema_str = json.dumps(schema, ensure_ascii=False, indent=2)
+    system_prompt = system_tpl  # zwykle bez placeholderów
+    user_prompt = _render_template(
+        user_tpl,
+        SCHEMA=schema_str,
+        TEXT=text,
+        CONTEXT=(context or ""),
+        BREVITY=("Return concise fields." if brevity else "Be thorough yet concise.")
+    )
+    return system_prompt, user_prompt
+
+
 def analyze_text(
     article_text: str,
     *,
@@ -160,10 +268,18 @@ def analyze_text(
     base_url=os.getenv("OPENAI_BASE_URL") or None  # zostaw None dla oficjalnego endpointu
 )
 
+    system_prompt, user_prompt = _build_user_prompt_from_files(
+        profile="article",
+        text=article_text,
+        schema=JSON_SCHEMA_EXAMPLE,
+        brevity=want_short,
+    )
+
     messages = [
-        {"role": "system", "content": SYSTEM_PREPROMPT},
-        {"role": "user", "content": _build_user_prompt(article_text, want_short=want_short)},
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
     ]
+
 
     last_err: Optional[Exception] = None
     for attempt in range(1, MAX_RETRIES + 1):
@@ -214,6 +330,93 @@ def analyze_text(
 
     raise RuntimeError(f"LLM analysis failed after {MAX_RETRIES} attempts: {last_err}")
 
+def analyze_comments(
+    comments_text: str,
+    *,
+    context: Optional[str] = None,   # np. tytuł posta, platforma, temat
+    model: str = DEFAULT_MODEL,
+    temperature: float = 0.2,
+    want_short: bool = True,
+) -> CommentAnalysisResult:
+    """
+    Analiza komentarzy pod kątem koordynacji/botów/trolli.
+    """
+    if not isinstance(comments_text, str) or not comments_text.strip():
+        raise ValueError("comments_text must be a non-empty string")
+
+    comments_text = _truncate(comments_text.strip(), MAX_INPUT_CHARS)
+
+    if OpenAI is None:
+        raise RuntimeError(
+            "OpenAI SDK not installed or failed to import. Run `pip install openai` and set OPENAI_API_KEY."
+        )
+
+    # prompty z plików (lub fallback)
+    system_prompt, user_prompt = _build_user_prompt_from_files(
+        profile="comments",
+        text=comments_text,
+        schema=JSON_SCHEMA_COMMENTS,
+        brevity=want_short,
+        context=context,
+    )
+
+    client = OpenAI(
+        api_key=os.getenv("OPENAI_API_KEY"),
+        base_url=os.getenv("OPENAI_BASE_URL") or None
+    )
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+
+    last_err: Optional[Exception] = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                timeout=REQUEST_TIMEOUT,
+                response_format={"type": "json_object"},
+            )
+        except Exception as e:
+            last_err = e
+            if attempt >= MAX_RETRIES:
+                break
+            time.sleep(RETRY_BACKOFF_SECS * attempt)
+            continue
+
+        try:
+            raw = resp.choices[0].message.content or "{}"
+            data = json.loads(raw)
+        except Exception as e:
+            last_err = e
+            if attempt >= MAX_RETRIES:
+                break
+            time.sleep(RETRY_BACKOFF_SECS * attempt)
+            continue
+
+        def _get(k, default):
+            return data.get(k, default)
+
+        return CommentAnalysisResult(
+            version=str(_get("version", "1.0")),
+            summary=str(_get("summary", "")),
+            risk_score=float(_get("risk_score", 0.5)),
+            confidence=float(_get("confidence", 0.5)),
+            rationale=str(_get("rationale", "")),
+            indicators=list(_get("indicators", [])),
+            bot_likelihood=float(_get("bot_likelihood", 0.5)),
+            troll_likelihood=float(_get("troll_likelihood", 0.5)),
+            coordination_signals=list(_get("coordination_signals", [])),
+            language_markers=list(_get("language_markers", [])),
+            recommended_actions=list(_get("recommended_actions", [])),
+            safety_notes=list(_get("safety_notes", [])),
+            raw_text=raw,
+        )
+
+    raise RuntimeError(f"LLM comment analysis failed after {MAX_RETRIES} attempts: {last_err}")
 
 # -----------------------------
 # Simple CLI for quick testing
@@ -221,17 +424,19 @@ def analyze_text(
 if __name__ == "__main__":
     import argparse, sys
 
-    parser = argparse.ArgumentParser(description="Disinformation risk analyzer via LLM.")
+    parser = argparse.ArgumentParser(description="Disinformation & comment integrity analyzer via LLM.")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="OpenAI model (default from env or gpt-4o-mini)")
     parser.add_argument("--short", action="store_true", help="Return a shorter analysis")
+    parser.add_argument("--mode", choices=["article", "comments"], default="article", help="Select analysis profile")
+    parser.add_argument("--context", default=None, help="Optional context for comments mode (post title, platform, topic)")
     parser.add_argument("file", nargs="?", help="Path to a text file to analyze. If omitted, read stdin.")
     args = parser.parse_args()
 
-    if args.file:
-        with open(args.file, "r", encoding="utf-8") as f:
-            text = f.read()
-    else:
-        text = sys.stdin.read()
+    text = open(args.file, "r", encoding="utf-8").read() if args.file else sys.stdin.read()
 
-    result = analyze_text(text, model=args.model, want_short=args.short)
+    if args.mode == "comments":
+        result = analyze_comments(text, context=args.context, model=args.model, want_short=args.short)
+    else:
+        result = analyze_text(text, model=args.model, want_short=args.short)
+
     print(result.json(indent=2, ensure_ascii=False))

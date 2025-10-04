@@ -1,0 +1,18 @@
+Analyze the following text for disinformation risk and produce ONLY the JSON object conforming to the schema below.
+Do not include markdown fences or commentary.
+
+Schema (example, types only; fill with your assessment):
+{SCHEMA}
+
+Scoring guidance:
+- 0.0–0.2: Very unlikely disinformation (well-sourced, consistent across reputable outlets)
+- 0.2–0.4: Unlikely; minor issues or unclear phrasing
+- 0.4–0.6: Uncertain; notable gaps or unresolved conflicts in sources
+- 0.6–0.8: Likely; significant red flags or contradictory evidence
+- 0.8–1.0: Very likely; strong indicators of fabrication or manipulation
+
+{BREVITY}
+
+--- BEGIN ARTICLE ---
+{TEXT}
+--- END ARTICLE ---

@@ -1,0 +1,18 @@
+Analyze the following comment(s) for potential coordinated manipulation or abusive automation. Return ONLY the JSON object as per the schema.
+
+Context (optional, may be empty):
+{CONTEXT}
+
+Schema (example, types only; fill with your assessment):
+{SCHEMA}
+
+Guidance:
+- risk_score is the overall risk of malign manipulation (0.0–1.0).
+- bot_likelihood and troll_likelihood are independent estimates (0.0–1.0).
+- If multiple comments are provided, consider cross-similarity and repeated phrasing.
+
+{BREVITY}
+
+--- BEGIN COMMENTS ---
+{TEXT}
+--- END COMMENTS ---
