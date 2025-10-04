@@ -12,6 +12,12 @@ import time
 import json
 from dataclasses import dataclass, asdict
 from typing import List, Optional, Dict, Any
+from dotenv import load_dotenv
+
+load_dotenv()
+if not os.getenv("OPENAI_API_KEY"):
+    raise RuntimeError("Brak OPENAI_API_KEY. Dodaj do .env albo ustaw zmienną środowiskową.")
+
 
 #from openai import OpenAI, APIError, RateLimitError, APITimeoutError
 try:
@@ -145,7 +151,14 @@ def analyze_text(
     # Light input guard
     article_text = _truncate(article_text.strip(), MAX_INPUT_CHARS)
 
-    client = OpenAI()
+    if OpenAI is None:
+        raise RuntimeError(
+            "OpenAI SDK not installed or failed to import. Run `pip install openai` and set OPENAI_API_KEY."
+        )
+    client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY"),
+    base_url=os.getenv("OPENAI_BASE_URL") or None  # zostaw None dla oficjalnego endpointu
+)
 
     messages = [
         {"role": "system", "content": SYSTEM_PREPROMPT},
@@ -154,8 +167,8 @@ def analyze_text(
 
     last_err: Optional[Exception] = None
     for attempt in range(1, MAX_RETRIES + 1):
+
         try:
-            # Chat Completions is widely supported and stable.
             resp = client.chat.completions.create(
                 model=model,
                 messages=messages,
@@ -163,37 +176,41 @@ def analyze_text(
                 timeout=REQUEST_TIMEOUT,
                 response_format={"type": "json_object"},  # force valid JSON
             )
-            raw = resp.choices[0].message.content or "{}"
-            data = json.loads(raw)
-
-            # Validate minimally and coerce into our dataclass
-            def _get(k, default):
-                return data.get(k, default)
-
-            result = AnalysisResult(
-                version=str(_get("version", "1.0")),
-                summary=str(_get("summary", "")),
-                likelihood_score=float(_get("likelihood_score", 0.5)),
-                confidence=float(_get("confidence", 0.5)),
-                rationale=str(_get("rationale", "")),
-                key_claims=list(_get("key_claims", [])),
-                detected_tactics=list(_get("detected_tactics", [])),
-                risk_factors=list(_get("risk_factors", [])),
-                recommended_checks=list(_get("recommended_checks", [])),
-                safety_notes=list(_get("safety_notes", [])),
-                raw_text=raw,
-            )
-            return result
-
-        except (APIError, RateLimitError, APITimeoutError, json.JSONDecodeError) as e:
+        except Exception as e:
             last_err = e
             if attempt >= MAX_RETRIES:
                 break
-            # Exponential backoff
             time.sleep(RETRY_BACKOFF_SECS * attempt)
+            continue
+
+
+        try:
+            raw = resp.choices[0].message.content or "{}"
+            data = json.loads(raw)
         except Exception as e:
-            # Non-retryable unexpected error
-            raise
+            last_err = e
+            if attempt >= MAX_RETRIES:
+                break
+            time.sleep(RETRY_BACKOFF_SECS * attempt)
+            continue
+
+
+        def _get(k, default):
+            return data.get(k, default)
+
+        return AnalysisResult(
+            version=str(_get("version", "1.0")),
+            summary=str(_get("summary", "")),
+            likelihood_score=float(_get("likelihood_score", 0.5)),
+            confidence=float(_get("confidence", 0.5)),
+            rationale=str(_get("rationale", "")),
+            key_claims=list(_get("key_claims", [])),
+            detected_tactics=list(_get("detected_tactics", [])),
+            risk_factors=list(_get("risk_factors", [])),
+            recommended_checks=list(_get("recommended_checks", [])),
+            safety_notes=list(_get("safety_notes", [])),
+            raw_text=raw,
+        )
 
     raise RuntimeError(f"LLM analysis failed after {MAX_RETRIES} attempts: {last_err}")
 
