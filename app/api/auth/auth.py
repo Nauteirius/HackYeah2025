@@ -10,7 +10,8 @@ def check_api_key(request: Request):
     if not auth or not auth.startswith("Basic "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authorized")
     
-    key = auth[len("Basic :"):].strip()
+    key = auth[len("Basic "):].strip()
+    print(key)
     if key != API_KEY:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authorized")
     return key

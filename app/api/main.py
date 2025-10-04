@@ -5,7 +5,7 @@ from auth.auth import check_api_key
 from test_data.test_data_analysis import mock_fact_check_result
 from dotenv import load_dotenv
 
-app = FastAPI(
+app = FastAPI(dependencies=[Depends(check_api_key)],
     description="""
 This API serves as an intermediary layer between the machine learning model and the website frontend. 
 When a request is received from the website:
@@ -18,11 +18,11 @@ When a request is received from the website:
 load_dotenv()
 
 @app.get("/fact-check-api/health")
-async def health_check(api_key: str = Depends(check_api_key)):
+async def health_check():
     return {"status": "ok", "service": "api", "version": "1.0.0"}
 
 # Single endpoint to receive AnalysisText, call model, get results, return back the result
 @app.post("/fact-check-api/predict")
-async def predict(api_key: str = Depends(check_api_key)):
+async def predict():
     return mock_fact_check_result
 
