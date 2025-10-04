@@ -526,7 +526,7 @@ def analyze_text(
 
     raise RuntimeError(f"LLM analysis failed after {MAX_RETRIES} attempts: {last_err}")
 
-async def analyze_comments(
+def analyze_comments(
     comments_text: str,
     *,
     context: Optional[str] = None,   # np. tytuł posta, platforma, temat
