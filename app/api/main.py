@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from models.receive_model import AnalysisResult
 from models.predict_model import AnalysisText
+from dotenv import load_dotenv
 
 app = FastAPI(
     description="""
@@ -12,6 +13,7 @@ When a request is received from the website:
 """
 )
 
+load_dotenv()
 
 @app.post("/fact-check-api/predict")
 async def predict(data: dict) -> AnalysisResult:
