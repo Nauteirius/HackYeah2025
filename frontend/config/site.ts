@@ -16,6 +16,10 @@ export const siteConfig = {
       label: "Contact",
       href: "/contact",
     },
+    {
+      label: "News",
+      href: "/news",
+    },
   ],
   navMenuItems: [
   ],
