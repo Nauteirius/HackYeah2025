@@ -6,7 +6,7 @@
   "confidence": 0.0,
   "history_summary": "",
   "prior_risk": 0.0,
-  "combined_likelihood_score": 0.0
+  "combined_likelihood_score": 0.0,
   "rationale": "",
   "key_claims": [
     { "claim": "", "verdict": "supported|disputed|unverifiable", "evidence": [""] }

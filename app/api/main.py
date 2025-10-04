@@ -4,6 +4,7 @@ from models.receive_model import AnalysisResult
 from auth.auth import check_api_key
 from test_data.test_data_analysis import mock_fact_check_result
 from dotenv import load_dotenv
+from disinfo_analyzer import analyze_comments
 
 app = FastAPI(dependencies=[Depends(check_api_key)],
     description="""
@@ -27,5 +28,6 @@ async def mock():
     return mock_fact_check_result
 
 @app.post("/fact-check-api/predict")
-async def predict() -> AnalysisResult:
+async def predict(data: dict) -> AnalysisResult:
+    prediction = await analyze_comments(data)
     return AnalysisResult
