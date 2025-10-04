@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional
 from bson import ObjectId
 
 from app.api.db import save_author, get_author_by_id, get_author_by_name, save_article, get_article
+from datetime import datetime
 
 
 def get_or_save_author(author_name: str) -> Dict[str, Any]:
@@ -45,7 +46,7 @@ def handle_text(text: Dict[str, str]) -> Optional[Dict[str, Any]]:
     review: Dict[str, Any] = create_review(author, text['content'])
     author['score'] = calculate_author_score(author, review)
     save_author(author)
-    article_id: ObjectId = save_article(author, text['content'], review)
+    article_id: ObjectId = save_article(author, text['content'], review, datetime.now())
     return get_article(article_id)
 
 
