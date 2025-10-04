@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 # from models.receive_model import AnalysisResult
 # from models.predict_model import AnalysisText
+from auth.auth import check_api_key
 from test_data.test_data_analysis import mock_fact_check_result
 from dotenv import load_dotenv
 
@@ -17,11 +18,11 @@ When a request is received from the website:
 load_dotenv()
 
 @app.get("/fact-check-api/health")
-async def health_check():
+async def health_check(api_key: str = Depends(check_api_key)):
     return {"status": "ok", "service": "api", "version": "1.0.0"}
 
 # Single endpoint to receive AnalysisText, call model, get results, return back the result
 @app.post("/fact-check-api/predict")
-async def predict():
+async def predict(api_key: str = Depends(check_api_key)):
     return mock_fact_check_result
 
