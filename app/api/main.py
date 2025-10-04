@@ -4,6 +4,7 @@ import logging
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends
 from fastapi import HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 
 import db
@@ -21,6 +22,14 @@ When a request is received from the website:
 2. The model processes the data and returns a response
 3. The API relays the model's response back to the website frontend
 """
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://hackyeah.encape.me/"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],  # Only necessary methods
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 load_dotenv()
