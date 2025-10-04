@@ -11,11 +11,7 @@ export const siteConfig = {
     {
       label: "News",
       href: "/news",
-    },
-    {
-      label: "News",
-      href: "/news",
-    },
+    }
   ],
   navMenuItems: [
   ],
