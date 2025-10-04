@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 if not os.getenv("OPENAI_API_KEY"):
-    raise RuntimeError("Brak OPENAI_API_KEY. Dodaj do .env albo ustaw zmienną środowiskową.")
+    raise RuntimeError("No OPENAI_API_KEY. Add .env or set env variable.")
 
 
 #from openai import OpenAI, APIError, RateLimitError, APITimeoutError
