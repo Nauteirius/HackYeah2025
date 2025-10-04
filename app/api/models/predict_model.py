@@ -1,6 +1,6 @@
-from pydantic import BasicModel
+from pydantic import BaseModel
 
-class AnalysisText(BasicModel):
+class AnalysisText(BaseModel):
     article_text: str
     model: str
     temperature: float = 0.2

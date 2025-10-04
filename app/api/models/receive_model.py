@@ -1,7 +1,7 @@
-from pydantic import BasicModel
+from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 
-class AnalysisResult(BasicModel):
+class AnalysisResult(BaseModel):
     version: str
     summary: str
     likelihood_score: float
