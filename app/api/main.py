@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 app = FastAPI(dependencies=[Depends(check_api_key)],
     description="""
-This API serves as an intermediary layer between the machine learning model and the website frontend. 
+This API serves as an intermediary layer between the machine learning model and the website frontend.
 When a request is received from the website:
 1. The API forwards the request payload to the model service
 2. The model processes the data and returns a response

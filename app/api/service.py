@@ -18,7 +18,7 @@ def get_or_save_author(author_name: str) -> Dict[str, Any]:
 
 
 def create_review(author: Dict[str, Any], content: str) -> Dict[str, Any]:
-    review: Dict[str, Any] = {
+    return {
         "version": "1.0",
         "summary": "",
         "likelihood_score": 0.0,
@@ -34,7 +34,6 @@ def create_review(author: Dict[str, Any], content: str) -> Dict[str, Any]:
         ],
         "safety_notes": []
     }
-    return review
 
 
 def calculate_author_score(author: Dict[str, Any], review: Dict[str, Any]) -> float:
@@ -45,8 +44,8 @@ def handle_text(text: Dict[str, str]) -> Optional[Dict[str, Any]]:
     author: Dict[str, Any] = get_or_save_author(text['author_name'])
     review: Dict[str, Any] = create_review(author, text['content'])
     author['score'] = calculate_author_score(author, review)
-    article_id: ObjectId = save_article(author, text['content'], review)
     save_author(author)
+    article_id: ObjectId = save_article(author, text['content'], review)
     return get_article(article_id)
 
 

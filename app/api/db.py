@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 
 from bson import ObjectId
 from pymongo import MongoClient
@@ -6,7 +6,7 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.results import InsertOneResult
 
-MONGODB_URI: str = "mongodb+srv://hackyeah:dKdRlzvWhJN941pi@cluster0.ycuws9t.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+MONGODB_URI: str = "mongodb+srv://hackyeah:TFN1W2hLUO5QJsij@cluster0.ycuws9t.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 MONGODB_DB: str = "hackyeah"
 
 client: MongoClient = MongoClient(MONGODB_URI)
