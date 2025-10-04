@@ -147,5 +147,7 @@ export default defineConfig([globalIgnores([
             prev: ["const", "let", "var"],
             next: ["const", "let", "var"],
         }],
+        ...pluginNext.configs.recommended.rules,
+      ...pluginNext.configs['core-web-vitals'].rules,
     },
 }]);
