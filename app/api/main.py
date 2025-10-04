@@ -1,6 +1,7 @@
 from fastapi import FastAPI
-from models.receive_model import AnalysisResult
-from models.predict_model import AnalysisText
+# from models.receive_model import AnalysisResult
+# from models.predict_model import AnalysisText
+from test_data.test_data_analysis import mock_fact_check_result
 from dotenv import load_dotenv
 
 app = FastAPI(
@@ -15,10 +16,12 @@ When a request is received from the website:
 
 load_dotenv()
 
-@app.post("/fact-check-api/predict")
-async def predict(data: dict) -> AnalysisResult:
-    return AnalysisResult
+@app.get("/fact-check-api/health")
+async def health_check():
+    return {"status": "ok", "service": "api", "version": "1.0.0"}
 
-@app.get("/fact-check-api/receive") 
-async def receive(data: dict) -> AnalysisText: 
-    return AnalysisText
+# Single endpoint to receive AnalysisText, call model, get results, return back the result
+@app.post("/fact-check-api/predict")
+async def predict():
+    return mock_fact_check_result
+
