@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends
-# from models.receive_model import AnalysisResult
+from models.receive_model import AnalysisResult
 # from models.predict_model import AnalysisText
 from auth.auth import check_api_key
 from test_data.test_data_analysis import mock_fact_check_result
@@ -22,7 +22,10 @@ async def health_check():
     return {"status": "ok", "service": "api", "version": "1.0.0"}
 
 # Single endpoint to receive AnalysisText, call model, get results, return back the result
-@app.post("/fact-check-api/predict")
-async def predict():
+@app.post("/fact-check-api/mock")
+async def mock():
     return mock_fact_check_result
 
+@app.post("/fact-check-api/predict")
+async def predict() -> AnalysisResult:
+    return AnalysisResult
