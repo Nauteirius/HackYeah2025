@@ -41,7 +41,7 @@ export const getArticleAnalysis = (): ArticleAnalysis => ({
 });
 
 export const makeRequest = async (text: string): Promise<ArticleAnalysis> => {
-  sleep(1000);
+  await sleep(1000);
 
   return getArticleAnalysis();
 };

@@ -14,6 +14,7 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  CircularProgress,
 } from "@heroui/react";
 import { Card, CardBody } from "@heroui/react";
 import { useMemo, useState } from "react";
@@ -23,23 +24,28 @@ import MetricsList from "@/components/metrics/metrics-list";
 
 //TODO: throttling
 export default function Home() {
-  const [apiData, setApiData] = useState<ArticleAnalysis>();
+  const [apiData, setApiData] = useState<ArticleAnalysis | null>(null);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const [userInput, setUserInput] = useState("");
 
   return (
     <section className="flex flex-row h-full w-full gap-4 p-5">
       <div style={{ width: "100%" }}>
-        <Textarea
-          fullWidth
-          disableAutosize
-          className="w-full h-full 123123"
-          classNames={{
-            inputWrapper: "!h-full",
-            input: "!h-full",
-          }}
-          label="Analyze Your Text"
-          placeholder="Enter your description"
-        />
+        <Card style={{ width: "100%", height: "100%" }}>
+          <Textarea
+            fullWidth
+            disableAutosize
+            className="w-full h-full 123123"
+            classNames={{
+              inputWrapper: "!h-full",
+              input: "!h-full",
+            }}
+            label="Analyze Your Text"
+            placeholder="Enter your description"
+            value={userInput}
+            onChange={(e) => setUserInput(e.target.value)}
+          />
+        </Card>
       </div>
       <div
         style={{
@@ -53,16 +59,21 @@ export default function Home() {
           <CardBody style={{ display: "flex", maxHeight: "80vh" }}>
             <div className="flex justify-between items-center  ">
               <p className="p-1">Results:</p>
-              <Button isIconOnly variant="light" onPress={onOpen}>
+              <Button
+                hidden={apiData == null}
+                isIconOnly
+                variant="light"
+                onPress={onOpen}
+              >
                 <FaExpand />
               </Button>
             </div>
 
             <ScrollShadow
-              className="grid grid-cols-2 gap-5 items-center align-center"
+              className="h-full gap-5 items-center align-center"
               style={{ overflowX: "hidden" }}
             >
-              <MetricsList data={null as unknown as ArticleAnalysis} />
+              <MetricsList data={apiData} />
             </ScrollShadow>
           </CardBody>
         </Card>
@@ -74,9 +85,14 @@ export default function Home() {
 
               setApiData(response);
             };
+
+            fetchData();
+          }}
+          style={{
+            color: "hsl(var(--heroui-foreground) / 1)",
           }}
         >
-          <IoSend size={24} />
+          <IoSend size={24} color="hsl(var(--heroui-foreground) / 1)" />
           Get Report
         </Button>
       </div>
@@ -85,23 +101,23 @@ export default function Home() {
         isOpen={isOpen}
         backdrop={"blur"}
         size="lg"
+        style={{ maxWidth: "unset", width: "80vw", maxHeight: "85vh" }}
         onOpenChange={onOpenChange}
       >
         <ModalContent>
           {(onClose) => (
             <>
               <ModalHeader className="flex flex-col gap-1">
-                Modal Title
+                Analysis Details
               </ModalHeader>
-              <ModalBody className="w-full grid">
-                <MetricsList data={null as unknown as ArticleAnalysis} collect />
+              <ModalBody className="overflow-auto">
+                <ScrollShadow className="h-full w-full">
+                  <MetricsList data={apiData} isModal={true} />
+                </ScrollShadow>
               </ModalBody>
               <ModalFooter>
                 <Button color="danger" variant="light" onPress={onClose}>
                   Close
-                </Button>
-                <Button color="primary" onPress={onClose}>
-                  Action
                 </Button>
               </ModalFooter>
             </>

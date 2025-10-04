@@ -1,8 +1,5 @@
 import React from "react";
-import {
-  Gauge,
-  gaugeClasses,
-} from "@mui/x-charts/Gauge";
+import { Gauge, gaugeClasses } from "@mui/x-charts/Gauge";
 
 type Props = {
   label: string;
@@ -10,12 +7,15 @@ type Props = {
   color: string;
 };
 
-const MetricScore = ({ value, label, color }: Props) => {  
+const MetricScore = ({ value, label, color }: Props) => {
   return (
     <>
       <div>{label}</div>
       <div>
         <Gauge
+          style={{
+            minWidth: 50,
+          }}
           value={value}
           startAngle={-110}
           endAngle={110}
