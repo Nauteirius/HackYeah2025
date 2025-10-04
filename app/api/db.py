@@ -1,11 +1,11 @@
-from typing import Optional, Dict, Any
+from datetime import datetime
+from typing import Optional, Dict, Any, Mapping
 
 from bson import ObjectId
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.results import InsertOneResult
-from datetime import datetime
 
 MONGODB_URI: str = "mongodb+srv://hackyeah:TFN1W2hLUO5QJsij@cluster0.ycuws9t.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 MONGODB_DB: str = "hackyeah"
@@ -36,6 +36,10 @@ def save_article(author: Dict[str, Any], content: str, review: Dict[str, Any], t
     return result.inserted_id
 
 
+def get_articles() -> list[Mapping[str, Any] | Any]:
+    return list(articles.find())
+
+
 def get_article(_id: ObjectId) -> Optional[Dict[str, Any]]:
     return articles.find_one({"_id": _id})
 
@@ -61,6 +65,10 @@ def save_comment(author: Dict[str, Any], content: str, review: Dict[str, Any], t
     return result.inserted_id
 
 
+def get_comments() -> list[Mapping[str, Any] | Any]:
+    return list(comments.find())
+
+
 def get_comment(_id: ObjectId) -> Optional[Dict[str, Any]]:
     return comments.find_one({"_id": _id})
 
@@ -72,6 +80,10 @@ def save_author(author: Dict[str, Any]) -> ObjectId:
     }
     result: InsertOneResult = authors.insert_one(doc)
     return result.inserted_id
+
+
+def get_authors() -> list[Mapping[str, Any] | Any]:
+    return list(authors.find())
 
 
 def get_author_by_id(_id: ObjectId) -> Optional[Dict[str, Any]]:

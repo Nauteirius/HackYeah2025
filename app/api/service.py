@@ -1,9 +1,9 @@
+from datetime import datetime
 from typing import Any, Dict, Optional
 
 from bson import ObjectId
 
 from app.api.db import save_author, get_author_by_id, get_author_by_name, save_article, get_article
-from datetime import datetime
 
 
 def get_or_save_author(author_name: str) -> Dict[str, Any]:
