@@ -1,15 +1,39 @@
-import CardMock from "@/components/card-mock";
-import TitleCardMock from "@/components/title-card-mock";
+"use client";
+
+import { Button, Textarea } from "@heroui/react";
+import { Card, CardBody } from "@heroui/react";
 
 export default function Home() {
   return (
-    <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
-      <TitleCardMock />
-      {Array.apply(null, Array(Math.round((Math.random() * 10) % 5) + 1)).map(
-        (_, i) => (
-          <CardMock key={i} />
-        )
-      )}
+    <section className="flex flex-row h-full w-full gap-4 p-5">
+      <div style={{ width: "100%" }}>
+        <Textarea
+          fullWidth
+          disableAutosize
+          className="w-full h-full 123123"
+          classNames={{
+            inputWrapper: "!h-full",
+            input: "!h-full"
+          }}
+          label="Page Content"
+          placeholder="Enter your description"
+        />
+      </div>
+      <div
+        style={{
+          width: 500,
+          display: "flex",
+          flexDirection: "column",
+        }}
+        className="gap-3"
+      >
+        <Card style={{ flex: 1 }}>
+          <CardBody>
+            <p>Results here.</p>
+          </CardBody>
+        </Card>
+        <Button>Analyze</Button>
+      </div>
     </section>
   );
 }
