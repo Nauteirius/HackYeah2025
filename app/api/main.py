@@ -1,12 +1,16 @@
-from fastapi import FastAPI, Depends, HTTPException
-from auth.auth import check_api_key
-from models.receive_model import AnalysisResult
-from test_data.test_data_analysis import mock_fact_check_result
+import json
+import logging
+
 from dotenv import load_dotenv
-from disinfo_analyzer import analyze_comments, analyze_text, DEFAULT_MODEL
+from fastapi import FastAPI, Depends
+from fastapi import HTTPException
 from starlette.concurrency import run_in_threadpool
 
-import json
+import db
+# from models.predict_model import AnalysisText
+from auth.auth import check_api_key
+from disinfo_analyzer import analyze_comments, analyze_text, DEFAULT_MODEL
+from test_data.test_data_analysis import mock_fact_check_result
 
 app = FastAPI(
     dependencies=[Depends(check_api_key)],
@@ -17,18 +21,27 @@ When a request is received from the website:
 2. The model processes the data and returns a response
 3. The API relays the model's response back to the website frontend
 """
-              )
+)
 
 load_dotenv()
+
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+LOG = logging.getLogger(__name__)
 
 
 @app.get("/fact-check-api/health")
 async def health_check():
     return {"status": "ok", "service": "api", "version": "1.0.0"}
 
+
 @app.post("/fact-check-api/mock")
 async def mock():
     return mock_fact_check_result
+
 
 @app.post("/fact-check-api/predict")
 async def predict(data: dict):
@@ -45,13 +58,13 @@ async def predict(data: dict):
     }
     """
     try:
-        mode    = (data.get("mode") or "comments").lower()
-        text    = data.get("text") or ""
-        author  = data.get("author")
+        mode = (data.get("mode") or "comments").lower()
+        text = data.get("text") or ""
+        author = data.get("author")
         context = data.get("context")
         history = data.get("history")
-        model   = data.get("model") or DEFAULT_MODEL
-        short   = bool(data.get("short", True if mode == "comments" else False))
+        model = data.get("model") or DEFAULT_MODEL
+        short = bool(data.get("short", True if mode == "comments" else False))
 
         if not text.strip():
             raise HTTPException(status_code=400, detail="Missing 'text' in request body.")
@@ -85,3 +98,18 @@ async def predict(data: dict):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analyzer error: {e}")
+
+
+@app.get("/fact-check-api/articles")
+async def get_articles() -> str:
+    return db.get_articles()
+
+
+@app.get("/fact-check-api/comments")
+async def get_comments() -> str:
+    return db.get_comments()
+
+
+@app.get("/fact-check-api/authors")
+async def get_authors() -> str:
+    return db.get_authors()

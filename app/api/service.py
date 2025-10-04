@@ -20,7 +20,6 @@ def get_or_save_author(author_name: str) -> Dict[str, Any]:
 
 def create_review(author: Dict[str, Any], content: str) -> Dict[str, Any]:
     return {
-        "version": "1.0",
         "summary": "",
         "likelihood_score": 0.0,
         "confidence": 0.0,

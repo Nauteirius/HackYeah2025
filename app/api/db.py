@@ -1,7 +1,8 @@
 from datetime import datetime
-from typing import Optional, Dict, Any, Mapping
+from typing import Optional, Dict, Any
 
 from bson import ObjectId
+from bson.json_util import dumps
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
@@ -36,12 +37,16 @@ def save_article(author: Dict[str, Any], content: str, review: Dict[str, Any], t
     return result.inserted_id
 
 
-def get_articles() -> list[Mapping[str, Any] | Any]:
-    return list(articles.find())
+def get_articles() -> str:
+    return dumps(articles.find())
 
 
 def get_article(_id: ObjectId) -> Optional[Dict[str, Any]]:
     return articles.find_one({"_id": _id})
+
+
+def get_articles_author_reviews(author_id: ObjectId) -> str:
+    return dumps(articles.find({"author_id": author_id}, {"score": 1, "_id": 0}))
 
 
 def save_comment(author: Dict[str, Any], content: str, review: Dict[str, Any], timestamp: datetime) -> ObjectId:
@@ -65,12 +70,16 @@ def save_comment(author: Dict[str, Any], content: str, review: Dict[str, Any], t
     return result.inserted_id
 
 
-def get_comments() -> list[Mapping[str, Any] | Any]:
-    return list(comments.find())
+def get_comments() -> str:
+    return dumps(comments.find())
 
 
 def get_comment(_id: ObjectId) -> Optional[Dict[str, Any]]:
     return comments.find_one({"_id": _id})
+
+
+def get_comments_author_reviews(author_id: ObjectId) -> str:
+    return dumps(comments.find({"author_id": author_id}, {"score": 1, "_id": 0}))
 
 
 def save_author(author: Dict[str, Any]) -> ObjectId:
@@ -82,8 +91,8 @@ def save_author(author: Dict[str, Any]) -> ObjectId:
     return result.inserted_id
 
 
-def get_authors() -> list[Mapping[str, Any] | Any]:
-    return list(authors.find())
+def get_authors() -> str:
+    return dumps(authors.find().sort("score", -1))
 
 
 def get_author_by_id(_id: ObjectId) -> Optional[Dict[str, Any]]:
