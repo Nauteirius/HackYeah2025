@@ -77,7 +77,7 @@ const MetricsList = ({ data, isModal }: Props) => {
           </div>
         )}
 
-        {data.detected_tactics && isModal && (
+        {data.detected_tactics?.length > 0 && isModal && (
           <div className={`${isModal ? "" : "w-full text-center mb-4"}`}>
             <h3 className="font-medium text-lg mb-2">Detected Tactics</h3>
             <DetectedTacticsReport values={data.detected_tactics} />
@@ -85,14 +85,14 @@ const MetricsList = ({ data, isModal }: Props) => {
           </div>
         )}
 
-        {data.risk_factors && isModal && (
+        {data.risk_factors?.length > 0 && isModal && (
           <div className={`${isModal ? " px-1" : "w-full px-1 pb-3"}`}>
             <RiskFactorsReport values={data.risk_factors} />
             {!isModal && <Divider className="mt-6" />}
           </div>
         )}
 
-        {data.recommended_checks && (
+        {data.recommended_checks?.length > 0 && (
           <div
             className={`${isModal ? "col-span-2 px-1" : "w-full px-1 pb-3"}`}
           >
@@ -100,7 +100,7 @@ const MetricsList = ({ data, isModal }: Props) => {
           </div>
         )}
 
-        {data.safety_notes && isModal && (
+        {data.safety_notes?.length > 0 && isModal && (
           <div
             className={`${isModal ? "col-span-2 px-1" : "w-full px-1 pb-3"}`}
           >

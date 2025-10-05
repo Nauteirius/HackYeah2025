@@ -18,12 +18,26 @@ const KeyClaimsReport = ({ values }: Props) => {
       <p className="text-lg font-medium mb-2">Key Claims</p>
       <div className="space-y-3">
         {values.map((item, index) => (
-          <Card key={index} className="border-l-4" style={{ borderLeftColor: interpolateColor(item.confidence * 100) }}>
+          <Card
+            key={index}
+            className="border-l-4"
+            style={{ borderLeftColor: interpolateColor(item.confidence * 100) }}
+          >
             <CardBody className="flex justify-between items-center">
               <p>{item.claim}</p>
-              <Badge color={item.confidence > 0.7 ? "success" : item.confidence > 0.4 ? "warning" : "error"}>
-                {Math.round(item.confidence * 100)}% confidence
-              </Badge>
+              {item.confidence && (
+                <Badge
+                  color={
+                    item.confidence > 0.7
+                      ? "success"
+                      : item.confidence > 0.4
+                        ? "warning"
+                        : "error"
+                  }
+                >
+                  {Math.round(item.confidence * 100)}% confidence
+                </Badge>
+              )}
             </CardBody>
           </Card>
         ))}

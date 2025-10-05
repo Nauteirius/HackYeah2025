@@ -29,7 +29,7 @@ export default function Home() {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const searchParams = useSearchParams();
   const query = searchParams.get("q");
-  const [userInput, setUserInput] = useState(query);
+  const [userInput, setUserInput] = useState(query ?? "");
 
   return (
     <section className="flex flex-row h-full w-full gap-4 p-5">
@@ -84,7 +84,7 @@ export default function Home() {
           color="success"
           onPress={() => {
             const fetchData = async () => {
-              const response = await makeRequest("MOCK");
+              const response = await makeRequest(userInput);
 
               setApiData(response);
             };
