@@ -1,5 +1,7 @@
 import json
 import logging
+import db
+from datetime import datetime
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends
@@ -7,7 +9,6 @@ from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 
-import db
 # from models.predict_model import AnalysisText
 from auth.auth import check_api_key
 from disinfo_analyzer import analyze_comments, analyze_text, DEFAULT_MODEL
@@ -61,7 +62,6 @@ async def predict(data: dict):
       "text": "<text to analyze>",
       "author": "user:xyz",              # optional
       "context": "thread title ...",     # optional (comments mode)
-      "history": [ { ... }, ... ],       # optional list of prior events
       "model": "gpt-4o-mini",            # optional override
       "short": true                      # optional (defaults: True for comments, False for article)
     }
@@ -71,7 +71,8 @@ async def predict(data: dict):
         text = data.get("text") or ""
         author = data.get("author")
         context = data.get("context")
-        history = data.get("history")
+        # history = db.get_articles_author_reviews(author)
+        history = []
         model = data.get("model") or DEFAULT_MODEL
         short = bool(data.get("short", True if mode == "comments" else False))
 
@@ -100,12 +101,24 @@ async def predict(data: dict):
         else:
             raise HTTPException(status_code=400, detail="Invalid 'mode'. Use 'comments' or 'article'.")
 
+        result_json = json.loads(result.json())
+
+        if "combined_likelihood_score" in result_json.keys():
+            author_id = db.save_author(author, result_json["combined_likelihood_score"])
+        else:
+            author_id = db.get_author_by_name(author)["_id"]
+        if mode == "article":
+            db.save_article(author_id, text, result_json, datetime.now())
+        elif mode == "comments":
+            db.save_comment(author_id, text, result_json, datetime.now())
+
         # Return the dataclass as plain JSON
-        return json.loads(result.json())
+        return result_json
 
     except HTTPException:
         raise
     except Exception as e:
+        LOG.exception(e)
         raise HTTPException(status_code=500, detail=f"Analyzer error: {e}")
 
 
