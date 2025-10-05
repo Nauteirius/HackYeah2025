@@ -10,6 +10,7 @@ import clsx from "clsx";
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { Logo } from "@/components/icons";
+import Image from "next/image";
 
 export const Navbar = () => {
   return (
@@ -17,7 +18,7 @@ export const Navbar = () => {
       <NavbarContent className="basis-1/5 sm:basis-full flex !justify-between">
         <NavbarBrand as="li" className="gap-3 max-w-fit">
           <NextLink className="flex justify-start items-center gap-1" href="/">
-            <Logo />
+            <Image src="/icon.png" alt="icon" width={24} height={24}/>
             <p className="font-bold text-inherit">
               HackYeah Modular Desinformation Detection System
             </p>
