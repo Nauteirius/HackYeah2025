@@ -104,7 +104,7 @@ export default function Home() {
         isOpen={isOpen}
         backdrop={"blur"}
         size="lg"
-        style={{ maxWidth: "unset", width: "80vw", maxHeight: "85vh" }}
+        style={{ maxWidth: "unset", width: "80vw", maxHeight: "83vh" }}
         onOpenChange={onOpenChange}
       >
         <ModalContent>
