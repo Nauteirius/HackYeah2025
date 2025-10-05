@@ -40,8 +40,37 @@ export const getArticleAnalysis = (): ArticleAnalysis => ({
   raw_text: `Raw JSON from model: {"article_title": "New Data Breach Study", "claim": "30% of users affected", "source": "Internal memo", "evidence": "No public links"}`,
 });
 
-export const makeRequest = async (text: string): Promise<ArticleAnalysis> => {
+export const makeRequest = async (
+  text: string
+): Promise<ArticleAnalysis | null> => {
   await sleep(1000);
 
-  return getArticleAnalysis();
+  try {
+    const req = await fetch(
+      "https://backend-hackyeah.encape.me/fact-check-api/predict",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Basic hackyeah-haey",
+        },
+        body: JSON.stringify({
+          mode: "article",
+          text,
+          author: "Custom",
+        }),
+      }
+    );
+
+    if (!req.ok) {
+      console.error("Request failed with status:", req.status);
+      return null;
+    }
+
+    const body = await req.json();
+    return body;
+  } catch (error) {
+    console.error("Fetch error:", error);
+    return null;
+  }
 };
