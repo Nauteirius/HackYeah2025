@@ -71,7 +71,7 @@ async def predict(data: dict):
         text = data.get("text") or ""
         author = data.get("author")
         context = data.get("context")
-        history = data.get("history")
+        history = db.get_articles_author_reviews(author)
         model = data.get("model") or DEFAULT_MODEL
         short = bool(data.get("short", True if mode == "comments" else False))
 

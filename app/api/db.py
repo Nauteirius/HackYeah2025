@@ -45,8 +45,8 @@ def get_article(_id: ObjectId) -> Optional[Dict[str, Any]]:
     return articles.find_one({"_id": _id})
 
 
-def get_articles_author_reviews(author_id: ObjectId) -> str:
-    return dumps(articles.find({"author_id": author_id}, {"score": 1, "_id": 0}))
+def get_articles_author_reviews(author_id: ObjectId) -> list[Dict[str, Any]]:
+    return list(articles.find({"author_id": author_id}, {"score": 1, "_id": 0}))
 
 
 def save_comment(author: Dict[str, Any], content: str, review: Dict[str, Any], timestamp: datetime) -> ObjectId:
@@ -78,8 +78,8 @@ def get_comment(_id: ObjectId) -> Optional[Dict[str, Any]]:
     return comments.find_one({"_id": _id})
 
 
-def get_comments_author_reviews(author_id: ObjectId) -> str:
-    return dumps(comments.find({"author_id": author_id}, {"score": 1, "_id": 0}))
+def get_comments_author_reviews(author_id: ObjectId) -> list[Dict[str, Any]]:
+    return list(comments.find({"author_id": author_id}, {"score": 1, "_id": 0}))
 
 
 def save_author(author: Dict[str, Any]) -> ObjectId:
