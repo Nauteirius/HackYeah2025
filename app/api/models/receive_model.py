@@ -6,6 +6,8 @@ class AnalysisResult(BaseModel):
     summary: str
     likelihood_score: float
     confidence: float
+    prior_risk: float
+    combined_likelihood_score: float
     rationale: str
     key_claims: List[Dict[str, Any]]
     detected_tactics: List[str]

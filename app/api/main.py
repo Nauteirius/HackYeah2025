@@ -8,7 +8,6 @@ from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 
-import db
 # from models.predict_model import AnalysisText
 from auth.auth import check_api_key
 from disinfo_analyzer import analyze_comments, analyze_text, DEFAULT_MODEL
@@ -71,7 +70,8 @@ async def predict(data: dict):
         text = data.get("text") or ""
         author = data.get("author")
         context = data.get("context")
-        history = db.get_articles_author_reviews(author)
+        # history = db.get_articles_author_reviews(author)
+        history = []
         model = data.get("model") or DEFAULT_MODEL
         short = bool(data.get("short", True if mode == "comments" else False))
 
@@ -102,11 +102,14 @@ async def predict(data: dict):
 
         result_json = json.loads(result.json())
 
-        author_id = db.save_author(author, result_json.get("combined_likelihood_score"))
-        if mode == "articles":
-            db.save_article(author_id, text, result_json, datetime.now())
-        elif mode == "comments":
-            db.save_comment(author_id, text, result_json, datetime.now())
+        # if "combined_likelihood_score" in result_json.keys():
+        #     author_id = db.save_author(author, result_json.get("combined_likelihood_score"))
+        # else:
+        # author_id = db.get_author_by_name(author)["_id"]
+        # if mode == "article":
+        #     db.save_article(author_id, text, result_json, datetime.now())
+        # elif mode == "comments":
+        #     db.save_comment(author_id, text, result_json, datetime.now())
 
         # Return the dataclass as plain JSON
         return result_json
@@ -117,17 +120,16 @@ async def predict(data: dict):
         LOG.exception(e)
         raise HTTPException(status_code=500, detail=f"Analyzer error: {e}")
 
-
-@app.get("/fact-check-api/articles")
-async def get_articles() -> str:
-    return db.get_articles()
-
-
-@app.get("/fact-check-api/comments")
-async def get_comments() -> str:
-    return db.get_comments()
-
-
-@app.get("/fact-check-api/authors")
-async def get_authors() -> str:
-    return db.get_authors()
+# @app.get("/fact-check-api/articles")
+# async def get_articles() -> str:
+#     return db.get_articles()
+#
+#
+# @app.get("/fact-check-api/comments")
+# async def get_comments() -> str:
+#     return db.get_comments()
+#
+#
+# @app.get("/fact-check-api/authors")
+# async def get_authors() -> str:
+#     return db.get_authors()

@@ -240,13 +240,17 @@ class AnalysisResult:
     summary: str
     likelihood_score: float
     confidence: float
+    prior_risk: float
+    combined_likelihood_score: float
     rationale: str
     key_claims: List[Dict[str, Any]]
     detected_tactics: List[str]
     risk_factors: List[str]
     recommended_checks: List[str]
     safety_notes: List[str]
-    raw_text: Optional[str] = None  # the raw JSON text from the model (for logging/debug)
+    raw_text: Optional[str] = (
+        None  # the raw JSON text from the model (for logging/debug)
+    )
 
     def json(self, **kwargs) -> str:
         return json.dumps(asdict(self), **kwargs)
