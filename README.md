@@ -68,7 +68,7 @@ docker run -e API_KEY="hackyeah-haey" \
 ## 💻 Technology Stack
 
 - **Frontend**: React/Next.js
-- **Backend**: FastAPI
+- **Backend**: Python, FastAPI, MongoDB
 - **Extension**: Chrome Extensions API
 - **AI Processing**: OpenAI API
 
