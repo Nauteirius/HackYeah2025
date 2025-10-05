@@ -2,8 +2,8 @@
 
 A comprehensive solution to identify and combat disinformation across digital platforms.
 
+## 📺 Main Demo
 ![Main demo](docs/main_demo.gif)
-![News demo](docs/news_demo.gif)
 
 ## 📋 Project Overview
 
@@ -71,3 +71,7 @@ docker run -e API_KEY="hackyeah-haey" \
 - **Backend**: FastAPI
 - **Extension**: Chrome Extensions API
 - **AI Processing**: OpenAI API
+
+
+## 📺 News Demo
+![News demo](docs/news_demo.gif)
