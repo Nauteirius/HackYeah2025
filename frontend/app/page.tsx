@@ -63,6 +63,7 @@ export default function Home() {
             classNames={{
               inputWrapper: "!h-full",
               input: "!h-full",
+              "label": "text-xl py-3"
             }}
             label="Analyze Your Text"
             placeholder="Enter your description"
@@ -82,7 +83,7 @@ export default function Home() {
         <Card style={{ flex: 1 }}>
           <CardBody style={{ display: "flex", maxHeight: "80vh" }}>
             <div className="flex justify-between items-center">
-              <p className="p-1">Results:</p>
+              <p className="p-1 text-lg">Results:</p>
               <Button
                 hidden={apiData == null}
                 isIconOnly
@@ -94,7 +95,7 @@ export default function Home() {
             </div>
 
             <ScrollShadow
-              className="h-full w-full flex items-center justify-center" // Centering classes
+              className="h-full w-full flex items-start justify-center" // Centering classes
               style={{ overflowX: "hidden" }}
             >
               {/* 3. Conditionally render the spinner or the results */}
