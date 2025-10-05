@@ -14,22 +14,43 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
-  CircularProgress,
+  CircularProgress, // Make sure CircularProgress is imported
 } from "@heroui/react";
 import { Card, CardBody } from "@heroui/react";
-import { useMemo, useState } from "react";
+import { useState } from "react"; // `useMemo` is no longer needed
 import { IoSend } from "react-icons/io5";
 import { FaExpand } from "react-icons/fa6";
 import MetricsList from "@/components/metrics/metrics-list";
 import { useSearchParams } from "next/navigation";
 
-//TODO: throttling
+// No throttling needed for this approach, as the button is disabled during the request.
 export default function Home() {
   const [apiData, setApiData] = useState<ArticleAnalysis | null>(null);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const searchParams = useSearchParams();
   const query = searchParams.get("q");
   const [userInput, setUserInput] = useState(query ?? "");
+  
+  // 1. Add a new state to track the loading status
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 2. Update the function that handles the API call
+  const handleAnalysisRequest = async () => {
+    if (!userInput.trim()) return; // Optional: prevent empty requests
+
+    setIsLoading(true);
+    setApiData(null); // Clear previous results immediately
+
+    try {
+      const response = await makeRequest(userInput);
+      setApiData(response);
+    } catch (error) {
+      console.error("Failed to fetch analysis:", error);
+      // Optionally, set an error state here to show a message to the user
+    } finally {
+      setIsLoading(false); // This will run after the try or catch block completes
+    }
+  };
 
   return (
     <section className="flex flex-row h-full w-full gap-4 p-5">
@@ -38,7 +59,7 @@ export default function Home() {
           <Textarea
             fullWidth
             disableAutosize
-            className="w-full h-full 123123"
+            className="w-full h-full"
             classNames={{
               inputWrapper: "!h-full",
               input: "!h-full",
@@ -60,7 +81,7 @@ export default function Home() {
       >
         <Card style={{ flex: 1 }}>
           <CardBody style={{ display: "flex", maxHeight: "80vh" }}>
-            <div className="flex justify-between items-center  ">
+            <div className="flex justify-between items-center">
               <p className="p-1">Results:</p>
               <Button
                 hidden={apiData == null}
@@ -73,32 +94,38 @@ export default function Home() {
             </div>
 
             <ScrollShadow
-              className="h-full gap-5 items-center align-center"
+              className="h-full w-full flex items-center justify-center" // Centering classes
               style={{ overflowX: "hidden" }}
             >
-              <MetricsList data={apiData} />
+              {/* 3. Conditionally render the spinner or the results */}
+              {isLoading ? (
+                <CircularProgress aria-label="Analyzing text..." />
+              ) : (
+                <MetricsList data={apiData} />
+              )}
             </ScrollShadow>
           </CardBody>
         </Card>
         <Button
           color="success"
-          onPress={() => {
-            const fetchData = async () => {
-              const response = await makeRequest(userInput);
-
-              setApiData(response);
-            };
-
-            fetchData();
-          }}
+          onPress={handleAnalysisRequest}
+          // 4. Disable the button and change text while loading
+          isDisabled={isLoading}
           style={{
             color: "hsl(var(--heroui-foreground) / 1)",
           }}
         >
-          <IoSend size={24} color="hsl(var(--heroui-foreground) / 1)" />
-          Get Report
+          {isLoading ? (
+            "Analyzing..."
+          ) : (
+            <>
+              <IoSend size={24} color="hsl(var(--heroui-foreground) / 1)" />
+              Get Report
+            </>
+          )}
         </Button>
       </div>
+      {/* The Modal remains unchanged and will work correctly */}
       <Modal
         isKeyboardDismissDisabled={true}
         isOpen={isOpen}
