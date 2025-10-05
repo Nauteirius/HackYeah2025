@@ -18,12 +18,12 @@ comments: Collection = db["Comments"]
 authors: Collection = db["Authors"]
 
 
-def save_article(author: Dict[str, Any], content: str, review: Dict[str, Any], timestamp: datetime) -> ObjectId:
+def save_article(author_id: ObjectId, content: str, review: Dict[str, Any], timestamp: datetime) -> ObjectId:
     doc: Dict[str, Any] = {
-        "author_id": author["id"],
+        "author_id": author_id,
         "content": content,
         "summary": review["summary"],
-        "likelihood_score": review["likelihood_score"],
+        "likelihood_score": review["combined_likelihood_score"],
         "confidence": review["confidence"],
         "rationale": review["rationale"],
         "key_claims": review["key_claims"],
@@ -49,9 +49,9 @@ def get_articles_author_reviews(author_id: ObjectId) -> list[Dict[str, Any]]:
     return list(articles.find({"author_id": author_id}, {"score": 1, "_id": 0}))
 
 
-def save_comment(author: Dict[str, Any], content: str, review: Dict[str, Any], timestamp: datetime) -> ObjectId:
+def save_comment(author_id: ObjectId, content: str, review: Dict[str, Any], timestamp: datetime) -> ObjectId:
     doc: Dict[str, Any] = {
-        "author_id": author["id"],
+        "author_id": author_id,
         "content": content,
         "summary": review["summary"],
         "risk_score": review["risk_score"],
@@ -82,10 +82,10 @@ def get_comments_author_reviews(author_id: ObjectId) -> list[Dict[str, Any]]:
     return list(comments.find({"author_id": author_id}, {"score": 1, "_id": 0}))
 
 
-def save_author(author: Dict[str, Any]) -> ObjectId:
+def save_author(author: str, score: float) -> ObjectId:
     doc: Dict[str, Any] = {
-        "name": author["name"],
-        "score": author["score"],
+        "name": author,
+        "score": score,
     }
     result: InsertOneResult = authors.insert_one(doc)
     return result.inserted_id

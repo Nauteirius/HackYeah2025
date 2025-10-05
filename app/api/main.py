@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends
@@ -99,12 +100,20 @@ async def predict(data: dict):
         else:
             raise HTTPException(status_code=400, detail="Invalid 'mode'. Use 'comments' or 'article'.")
 
+        result_json = json.loads(result.json())
+        author_id = db.save_author(author, result_json["combined_likelihood_score"])
+        if mode == "articles":
+            db.save_article(author_id, text, result_json, datetime.now())
+        elif mode == "comments":
+            db.save_comment(author_id, text, result_json, datetime.now())
+
         # Return the dataclass as plain JSON
-        return json.loads(result.json())
+        return result_json
 
     except HTTPException:
         raise
     except Exception as e:
+        LOG.exception(e)
         raise HTTPException(status_code=500, detail=f"Analyzer error: {e}")
 
 
