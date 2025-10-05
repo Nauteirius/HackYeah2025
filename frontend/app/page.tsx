@@ -30,7 +30,7 @@ export default function Home() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q");
   const [userInput, setUserInput] = useState(query ?? "");
-  
+
   // 1. Add a new state to track the loading status
   const [isLoading, setIsLoading] = useState(false);
 
@@ -63,7 +63,7 @@ export default function Home() {
             classNames={{
               inputWrapper: "!h-full",
               input: "!h-full",
-              "label": "text-xl py-3"
+              label: "text-xl py-3",
             }}
             label="Analyze Your Text"
             placeholder="Enter your description"
@@ -100,7 +100,12 @@ export default function Home() {
             >
               {/* 3. Conditionally render the spinner or the results */}
               {isLoading ? (
-                <CircularProgress aria-label="Analyzing text..." />
+                <div
+                  className="flex justify-center items-center"
+                  style={{ height: "100%" }}
+                >
+                  <CircularProgress aria-label="Analyzing text..." />
+                </div>
               ) : (
                 <MetricsList data={apiData} />
               )}
