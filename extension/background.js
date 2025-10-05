@@ -10,7 +10,7 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "goToDomain" && info.selectionText) {
     const query = encodeURIComponent(info.selectionText.trim());
-    const url = `http://localhost:3000?q=${query}`;
+    const url = `https://hackyeah.encape.me/?q=${query}`;
     chrome.tabs.create({ url });
   }
 });
