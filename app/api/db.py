@@ -1,4 +1,5 @@
 from datetime import datetime
+from operator import ifloordiv
 from typing import Optional, Dict, Any
 
 from bson import ObjectId
@@ -22,15 +23,15 @@ def save_article(author_id: ObjectId, content: str, review: Dict[str, Any], time
     doc: Dict[str, Any] = {
         "author_id": author_id,
         "content": content,
-        "summary": review["summary"],
-        "likelihood_score": review["combined_likelihood_score"],
-        "confidence": review["confidence"],
-        "rationale": review["rationale"],
-        "key_claims": review["key_claims"],
-        "detected_tactics": review["detected_tactics"],
-        "risk_factors": review["risk_factors"],
-        "recommended_checks": review["recommended_checks"],
-        "safety_notes": review["safety_notes"],
+        "summary": review["summary"] if "summary" in review else "",
+        "likelihood_score": review["combined_likelihood_score"] if "combined_likelihood_score" in review else 0.0,
+        "confidence": review["confidence"] if "confidence" in review else 0.0,
+        "rationale": review["rationale"] if "rationale" in review else "",
+        "key_claims": review["key_claims"] if "key_claims" in review else [],
+        "detected_tactics": review["detected_tactics"] if "detected_tactics" in review else [],
+        "risk_factors": review["risk_factors"] if "risk_factors" in review else [],
+        "recommended_checks": review["recommended_checks"] if "recommended_checks" in review else [],
+        "safety_notes": review["safety_notes"] if "safety_notes" in review else [],
         "timestamp": timestamp
     }
     result: InsertOneResult = articles.insert_one(doc)
@@ -53,17 +54,17 @@ def save_comment(author_id: ObjectId, content: str, review: Dict[str, Any], time
     doc: Dict[str, Any] = {
         "author_id": author_id,
         "content": content,
-        "summary": review["summary"],
-        "risk_score": review["risk_score"],
-        "confidence": review["confidence"],
-        "rationale": review["rationale"],
-        "indicators": review["indicators"],
-        "bot_likelihood": review["bot_likelihood"],
-        "troll_likelihood": review["troll_likelihood"],
-        "coordination_signals": review["coordination_signals"],
-        "language_markers": review["language_markers"],
-        "recommended_actions": review["recommended_actions"],
-        "safety_notes": review["safety_notes"],
+        "summary": review["summary"] if "summary" in review else "",
+        "risk_score": review["risk_score"] if "risk_score" in review else 0.0,
+        "confidence": review["confidence"] if "confidence" in review else 0.0,
+        "rationale": review["rationale"] if "rationale" in review else "",
+        "indicators": review["indicators"] if "indicators" in review else [],
+        "bot_likelihood": review["bot_likelihood"] if "bot_likelihood" in review else 0.0,
+        "troll_likelihood": review["troll_likelihood"] if "troll_likelihood" in review else 0.0,
+        "coordination_signals": review["coordination_signals"] if "coordination_signals" in review else [],
+        "language_markers": review["language_markers"] if "language_markers" in review else [],
+        "recommended_actions": review["recommended_actions"] if "recommended_actions" in review else [],
+        "safety_notes": review["safety_notes"] if "safety_notes" in review else [],
         "timestamp": timestamp
     }
     result: InsertOneResult = comments.insert_one(doc)

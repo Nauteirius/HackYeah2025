@@ -1,5 +1,6 @@
 import json
 import logging
+import db
 from datetime import datetime
 
 from dotenv import load_dotenv
@@ -102,14 +103,14 @@ async def predict(data: dict):
 
         result_json = json.loads(result.json())
 
-        # if "combined_likelihood_score" in result_json.keys():
-        #     author_id = db.save_author(author, result_json.get("combined_likelihood_score"))
-        # else:
-        # author_id = db.get_author_by_name(author)["_id"]
-        # if mode == "article":
-        #     db.save_article(author_id, text, result_json, datetime.now())
-        # elif mode == "comments":
-        #     db.save_comment(author_id, text, result_json, datetime.now())
+        if "combined_likelihood_score" in result_json.keys():
+            author_id = db.save_author(author, result_json["combined_likelihood_score"])
+        else:
+            author_id = db.get_author_by_name(author)["_id"]
+        if mode == "article":
+            db.save_article(author_id, text, result_json, datetime.now())
+        elif mode == "comments":
+            db.save_comment(author_id, text, result_json, datetime.now())
 
         # Return the dataclass as plain JSON
         return result_json
@@ -120,16 +121,17 @@ async def predict(data: dict):
         LOG.exception(e)
         raise HTTPException(status_code=500, detail=f"Analyzer error: {e}")
 
-# @app.get("/fact-check-api/articles")
-# async def get_articles() -> str:
-#     return db.get_articles()
-#
-#
-# @app.get("/fact-check-api/comments")
-# async def get_comments() -> str:
-#     return db.get_comments()
-#
-#
-# @app.get("/fact-check-api/authors")
-# async def get_authors() -> str:
-#     return db.get_authors()
+
+@app.get("/fact-check-api/articles")
+async def get_articles() -> str:
+    return db.get_articles()
+
+
+@app.get("/fact-check-api/comments")
+async def get_comments() -> str:
+    return db.get_comments()
+
+
+@app.get("/fact-check-api/authors")
+async def get_authors() -> str:
+    return db.get_authors()

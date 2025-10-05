@@ -577,6 +577,8 @@ def analyze_text(
             version=str(_get("version", "1.0")),
             summary=str(_get("summary", "")),
             likelihood_score=float(_get("likelihood_score", 0.5)),
+            prior_risk=float(_get("prior_risk", 0.5)),
+            combined_likelihood_score=float(_get("combined_likelihood_score", 0.5)),
             confidence=float(_get("confidence", 0.5)),
             rationale=str(_get("rationale", "")),
             key_claims=list(_get("key_claims", [])),
