@@ -101,7 +101,8 @@ async def predict(data: dict):
             raise HTTPException(status_code=400, detail="Invalid 'mode'. Use 'comments' or 'article'.")
 
         result_json = json.loads(result.json())
-        author_id = db.save_author(author, result_json["combined_likelihood_score"])
+
+        author_id = db.save_author(author, result_json.get("combined_likelihood_score"))
         if mode == "articles":
             db.save_article(author_id, text, result_json, datetime.now())
         elif mode == "comments":
