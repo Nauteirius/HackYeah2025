@@ -61,7 +61,6 @@ async def predict(data: dict):
       "text": "<text to analyze>",
       "author": "user:xyz",              # optional
       "context": "thread title ...",     # optional (comments mode)
-      "history": [ { ... }, ... ],       # optional list of prior events
       "model": "gpt-4o-mini",            # optional override
       "short": true                      # optional (defaults: True for comments, False for article)
     }

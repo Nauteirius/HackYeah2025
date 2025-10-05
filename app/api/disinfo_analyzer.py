@@ -7,28 +7,36 @@
 #   print(result.json(indent=2))
 
 from __future__ import annotations
+
+import math
 import os
 import time
-import json
 from dataclasses import dataclass, asdict
 from typing import List, Optional, Dict, Any
+
 from dotenv import load_dotenv
-import math
-from typing import Tuple
-from datetime import datetime
+
 load_dotenv()
 if not os.getenv("OPENAI_API_KEY"):
     raise RuntimeError("No OPENAI_API_KEY. Add .env or set env variable.")
 
-
-#from openai import OpenAI, APIError, RateLimitError, APITimeoutError
+# from openai import OpenAI, APIError, RateLimitError, APITimeoutError
 try:
     from openai import OpenAI, APIError, RateLimitError, APITimeoutError
 except Exception:
     OpenAI = None  # pozwala testom lub mockom to nadpisać
-    class APIError(Exception): ...
-    class RateLimitError(Exception): ...
-    class APITimeoutError(Exception): ...
+
+
+    class APIError(Exception):
+        ...
+
+
+    class RateLimitError(Exception):
+        ...
+
+
+    class APITimeoutError(Exception):
+        ...
 # -----------------------------
 # Config
 # -----------------------------
@@ -48,8 +56,8 @@ RISK_TRIGGER = os.getenv("RISK_TRIGGER", "high").lower()  # "high" or "low"
 RISK_THRESHOLD_ARTICLE = float(os.getenv("RISK_THRESHOLD_ARTICLE", "0.7"))
 RISK_THRESHOLD_COMMENTS = float(os.getenv("RISK_THRESHOLD_COMMENTS", "0.7"))
 
-
 PROMPTS_DIR = os.getenv("PROMPTS_DIR", os.path.join(os.path.dirname(__file__), "prompts"))
+
 
 def _read_file(path: str) -> Optional[str]:
     try:
@@ -58,13 +66,16 @@ def _read_file(path: str) -> Optional[str]:
     except Exception:
         return None
 
+
 def _load_template(profile: str, name: str) -> Optional[str]:
     path = os.path.join(PROMPTS_DIR, profile, name)
     return _read_file(path)
 
+
 def _render_template(tpl: str, **kwargs) -> str:
     # proste wstawianie {PLACEHOLDER}; jeżeli w tpl są dosłowne { }, użyj {{ i }}
     return tpl.format(**kwargs)
+
 
 def _format_history(history: Optional[List[Dict[str, Any]]], max_items: int = 6) -> str:
     """
@@ -91,6 +102,7 @@ Expected keys in a record (example):{"ts": "2025-10-01T12:00:00Z", "type": "comm
         lines.append(f"- {ts} • {kind} • score={score} • {verdict} {('• ' + note) if note else ''}".strip())
     return "\n".join(lines)
 
+
 def _compute_prior_from_history(history: Optional[List[Dict[str, Any]]]) -> Optional[float]:
     """
     Calculates a weak ‘prior’ based on history: the average of ‘bad’ records (score ≥ 0.7),
@@ -103,6 +115,7 @@ def _compute_prior_from_history(history: Optional[List[Dict[str, Any]]]) -> Opti
         return None
     # średnia „złych” skorów jako prior (0..1)
     return max(0.0, min(1.0, sum(bad) / len(bad)))
+
 
 def _combine_with_prior(model_score: float, prior: Optional[float], history_size: int) -> float:
     """
@@ -119,14 +132,22 @@ def _combine_with_prior(model_score: float, prior: Optional[float], history_size
 # Fallback (gdy plik schema.json nie istnieje lub jest błędny)
 _DEFAULT_SCHEMA_ARTICLE = {
     "version": "1.0",
+    "author": "",
     "summary": "",
     "likelihood_score": 0.0,
     "confidence": 0.0,
+    "history_summary": "",
+    "prior_risk": 0.0,
+    "combined_likelihood_score": 0.0,
     "rationale": "",
-    "key_claims": [{"claim": "", "verdict": "supported|disputed|unverifiable", "evidence": [""]}],
+    "key_claims": [
+        {"claim": "", "verdict": "supported|disputed|unverifiable", "evidence": [""]}
+    ],
     "detected_tactics": [],
     "risk_factors": [],
-    "recommended_checks": ["Cross-check with wire services (AP, Reuters, AFP) and NATO/UN press rooms"],
+    "recommended_checks": [
+        "Cross-check with wire services (AP, Reuters, AFP) and NATO/UN press rooms"
+    ],
     "safety_notes": []
 }
 _DEFAULT_SCHEMA_COMMENTS = {
@@ -145,6 +166,7 @@ _DEFAULT_SCHEMA_COMMENTS = {
 }
 
 _SCHEMA_CACHE: Dict[str, Dict[str, Any]] = {}
+
 
 def _load_schema(profile: str) -> Dict[str, Any]:
     """
@@ -174,23 +196,21 @@ def _load_schema(profile: str) -> Dict[str, Any]:
         return default
 
 
-
 # -----------------------------
 # Preprompt / system policy
 # -----------------------------
-# SYSTEM_PREPROMPT = """You are an impartial, evidence-first disinformation risk analyst aligned with democratic values and international law.
-# Follow these rules:
-# 1) Be non-partisan and avoid ideological judgments; focus on verifiable claims and provenance.
-# 2) Favor primary sources and reputable multi-national outlets. Note when claims are unverified.
-# 3) Identify manipulation tactics (e.g., false attribution, cherry-picking, synthetic media, impersonation, bot amplification).
-# 4) Provide *actionable* verification steps (who to contact, what datasets to check).
-# 5) Respect privacy: do not reveal personal data beyond what is provided.
-# 6) Output strictly in the requested JSON schema. No extra commentary.
-# 7) Calibrate risk realistically: “uncertain” is acceptable if evidence is weak.
-# 8) Consider multilingual nuances and known propaganda patterns.
-# 9) Assume NATO-aligned ethics: transparency, accountability, human rights, and rule of law.
-# """
-
+SYSTEM_PREPROMPT = """You are an impartial, evidence-first disinformation risk analyst aligned with democratic values and international law.
+Follow these rules:
+1) Be non-partisan and avoid ideological judgments; focus on verifiable claims and provenance.
+2) Favor primary sources and reputable multi-national outlets. Note when claims are unverified.
+3) Identify manipulation tactics (e.g., false attribution, cherry-picking, synthetic media, impersonation, bot amplification).
+4) Provide *actionable* verification steps (who to contact, what datasets to check).
+5) Respect privacy: do not reveal personal data beyond what is provided.
+6) Output strictly in the requested JSON schema. No extra commentary.
+7) Calibrate risk realistically: “uncertain” is acceptable if evidence is weak.
+8) Consider multilingual nuances and known propaganda patterns.
+9) Assume NATO-aligned ethics: transparency, accountability, human rights, and rule of law.
+"""
 
 
 @dataclass
@@ -225,7 +245,7 @@ class AnalysisResult:
     risk_factors: List[str]
     recommended_checks: List[str]
     safety_notes: List[str]
-    raw_text: Optional[str] = None   # the raw JSON text from the model (for logging/debug)
+    raw_text: Optional[str] = None  # the raw JSON text from the model (for logging/debug)
 
     def json(self, **kwargs) -> str:
         return json.dumps(asdict(self), **kwargs)
@@ -247,7 +267,7 @@ def _build_user_prompt(article_text: str, want_short: bool = False) -> str:
         "Analyze the following text for disinformation risk and produce ONLY the JSON object "
         "conforming to the schema below. Do not include markdown fences or commentary."
     )
-    schema = json.dumps(JSON_SCHEMA_EXAMPLE, ensure_ascii=False, indent=2)
+    schema = json.dumps(_DEFAULT_SCHEMA_ARTICLE, ensure_ascii=False, indent=2)
     guidance = (
         "Scoring guidance:\n"
         "- 0.0–0.2: Very unlikely disinformation (well-sourced, consistent across reputable outlets)\n"
@@ -274,16 +294,15 @@ Schema (example, types only; fill with your assessment):
 """
 
 
-
 def _build_user_prompt_from_files(
-    profile: str,
-    text: str,
-    *,
-    schema: dict,
-    brevity: bool,
-    context: Optional[str] = None,
-    author: Optional[str] = None,
-    history: Optional[List[Dict[str, Any]]] = None,
+        profile: str,
+        text: str,
+        *,
+        schema: dict,
+        brevity: bool,
+        context: Optional[str] = None,
+        author: Optional[str] = None,
+        history: Optional[List[Dict[str, Any]]] = None,
 
 ) -> (str, str):
     """
@@ -312,7 +331,7 @@ Schema:
 Context:
 {context or ""}
 
-{ "Return concise fields." if brevity else "Be thorough yet concise." }
+{"Return concise fields." if brevity else "Be thorough yet concise."}
 
 --- BEGIN COMMENTS ---
 {text}
@@ -335,8 +354,10 @@ Context:
     )
     return system_prompt, user_prompt
 
+
 # --- simple SQLite storage for author/events ---
 import sqlite3
+
 
 def _db_conn():
     if not DB_PATH:
@@ -348,30 +369,66 @@ def _db_conn():
     conn.execute("PRAGMA journal_mode=WAL;")
     return conn
 
+
 def init_db():
     conn = _db_conn()
     if not conn:
         return
     conn.executescript("""
-    CREATE TABLE IF NOT EXISTS authors(
-        id TEXT PRIMARY KEY,
-        display_name TEXT,
-        platform TEXT,
-        created_at TEXT DEFAULT (datetime('now'))
-    );
-    CREATE TABLE IF NOT EXISTS events(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        author_id TEXT,
-        kind TEXT,              -- 'article' | 'comment'
-        score REAL,             -- raw model score (NOT combined)
-        verdict TEXT,           -- derived label at insertion time
-        note TEXT,
-        ts TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY(author_id) REFERENCES authors(id)
-    );
-    """)
+                       CREATE TABLE IF NOT EXISTS authors
+                       (
+                           id
+                           TEXT
+                           PRIMARY
+                           KEY,
+                           display_name
+                           TEXT,
+                           platform
+                           TEXT,
+                           created_at
+                           TEXT
+                           DEFAULT (
+                           datetime
+                       (
+                           'now'
+                       ))
+                           );
+                       CREATE TABLE IF NOT EXISTS events
+                       (
+                           id
+                           INTEGER
+                           PRIMARY
+                           KEY
+                           AUTOINCREMENT,
+                           author_id
+                           TEXT,
+                           kind
+                           TEXT, -- 'article' | 'comment'
+                           score
+                           REAL, -- raw model score (NOT combined)
+                           verdict
+                           TEXT, -- derived label at insertion time
+                           note
+                           TEXT,
+                           ts
+                           TEXT
+                           DEFAULT (
+                           datetime
+                       (
+                           'now'
+                       )),
+                           FOREIGN KEY
+                       (
+                           author_id
+                       ) REFERENCES authors
+                       (
+                           id
+                       )
+                           );
+                       """)
     conn.commit()
     conn.close()
+
 
 def _normalize_author(author: Optional[str]) -> Optional[str]:
     if not author:
@@ -379,7 +436,9 @@ def _normalize_author(author: Optional[str]) -> Optional[str]:
     a = author.strip()
     return a or None
 
-def _upsert_author(author: Optional[str], display_name: Optional[str] = None, platform: Optional[str] = None) -> Optional[str]:
+
+def _upsert_author(author: Optional[str], display_name: Optional[str] = None, platform: Optional[str] = None) -> \
+        Optional[str]:
     aid = _normalize_author(author)
     if not aid:
         return None
@@ -394,10 +453,12 @@ def _upsert_author(author: Optional[str], display_name: Optional[str] = None, pl
     conn.close()
     return aid
 
+
 def _should_log(score: float, *, threshold: float, trigger: str) -> bool:
     if trigger == "low":
         return score <= threshold
     return score >= threshold
+
 
 def _maybe_log_event(kind: str, author: Optional[str], score: float, verdict: str, note: str = "") -> None:
     # Only if DB configured:
@@ -414,19 +475,20 @@ def _maybe_log_event(kind: str, author: Optional[str], score: float, verdict: st
     conn.commit()
     conn.close()
 
+
 # initialize tables if DB_PATH provided
 if DB_PATH:
     init_db()
 
 
 def analyze_text(
-    article_text: str,
-    *,
-    history: Optional[List[Dict[str, Any]]] = None,
-    author: Optional[str] = None,
-    model: str = DEFAULT_MODEL,
-    temperature: float = 0.2,
-    want_short: bool = False,
+        article_text: str,
+        *,
+        history: Optional[List[Dict[str, Any]]] = None,
+        author: Optional[str] = None,
+        model: str = DEFAULT_MODEL,
+        temperature: float = 0.2,
+        want_short: bool = False,
 ) -> AnalysisResult:
     """
     Run a disinformation-risk analysis via an LLM and return a structured result.
@@ -445,9 +507,9 @@ def analyze_text(
             "OpenAI SDK not installed or failed to import. Run `pip install openai` and set OPENAI_API_KEY."
         )
     client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
-    base_url=os.getenv("OPENAI_BASE_URL") or None  # zostaw None dla oficjalnego endpointu
-)
+        api_key=os.getenv("OPENAI_API_KEY"),
+        base_url=os.getenv("OPENAI_BASE_URL") or None  # zostaw None dla oficjalnego endpointu
+    )
 
     system_prompt, user_prompt = _build_user_prompt_from_files(
         profile="article",
@@ -462,7 +524,6 @@ def analyze_text(
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
-
 
     last_err: Optional[Exception] = None
     for attempt in range(1, MAX_RETRIES + 1):
@@ -482,7 +543,6 @@ def analyze_text(
             time.sleep(RETRY_BACKOFF_SECS * attempt)
             continue
 
-
         try:
             raw = resp.choices[0].message.content or "{}"
             data = json.loads(raw)
@@ -492,7 +552,6 @@ def analyze_text(
                 break
             time.sleep(RETRY_BACKOFF_SECS * attempt)
             continue
-
 
         def _get(k, default):
             return data.get(k, default)
@@ -508,7 +567,6 @@ def analyze_text(
         # only record if condition meets your trigger using the RAW model score
         if _should_log(model_score, threshold=RISK_THRESHOLD_ARTICLE, trigger=RISK_TRIGGER):
             _maybe_log_event(kind="article", author=author, score=model_score, verdict=verdict, note="auto")
-
 
         return AnalysisResult(
             version=str(_get("version", "1.0")),
@@ -526,15 +584,16 @@ def analyze_text(
 
     raise RuntimeError(f"LLM analysis failed after {MAX_RETRIES} attempts: {last_err}")
 
+
 def analyze_comments(
-    comments_text: str,
-    *,
-    context: Optional[str] = None,   # np. tytuł posta, platforma, temat
-    history: Optional[List[Dict[str, Any]]] = None,
-    author: Optional[str] = None,
-    model: str = DEFAULT_MODEL,
-    temperature: float = 0.2,
-    want_short: bool = True,
+        comments_text: str,
+        *,
+        context: Optional[str] = None,  # np. tytuł posta, platforma, temat
+        history: Optional[List[Dict[str, Any]]] = None,
+        author: Optional[str] = None,
+        model: str = DEFAULT_MODEL,
+        temperature: float = 0.2,
+        want_short: bool = True,
 ) -> CommentAnalysisResult:
     """
     Analiza komentarzy pod kątem koordynacji/botów/trolli.
@@ -628,11 +687,13 @@ def analyze_comments(
 
     raise RuntimeError(f"LLM comment analysis failed after {MAX_RETRIES} attempts: {last_err}")
 
+
 # -----------------------------
 # Simple CLI for quick testing
 # -----------------------------
 if __name__ == "__main__":
     import argparse, sys, json, os
+
 
     def _load_history_from_args(hist_arg: Optional[str], hist_file: Optional[str]):
         """
@@ -664,11 +725,13 @@ if __name__ == "__main__":
 
         return None
 
+
     parser = argparse.ArgumentParser(description="Disinformation & comment integrity analyzer via LLM.")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="OpenAI model (default from env or gpt-4o-mini)")
     parser.add_argument("--short", action="store_true", help="Return a shorter analysis")
     parser.add_argument("--mode", choices=["article", "comments"], default="article", help="Select analysis profile")
-    parser.add_argument("--context", default=None, help="Optional context for comments mode (post title, platform, topic)")
+    parser.add_argument("--context", default=None,
+                        help="Optional context for comments mode (post title, platform, topic)")
     parser.add_argument("--author", default=None, help="Author ID/handle to attribute this item to")
     parser.add_argument("--history", default=None, help="Inline JSON array with prior events for this author")
     parser.add_argument("--history-file", default=None, help="Path to JSON (array) or JSONL with prior events")
@@ -698,8 +761,6 @@ if __name__ == "__main__":
 
     print(result.json(indent=2, ensure_ascii=False))
 
-
-
-#beda scory  autor timestamp i score, i mozna wykrywac spikei, liczba zlych scoraow w czasie, mozna uzywac
-#kolejny enpoint sprawdz autora czy on jest jakis zlym zrodlem.
-#kolejny ficzer zmien klikbaitowy na nie klikbaitowy
+# beda scory  autor timestamp i score, i mozna wykrywac spikei, liczba zlych scoraow w czasie, mozna uzywac
+# kolejny enpoint sprawdz autora czy on jest jakis zlym zrodlem.
+# kolejny ficzer zmien klikbaitowy na nie klikbaitowy
